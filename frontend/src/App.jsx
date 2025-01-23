@@ -1,11 +1,12 @@
-import { Container } from "@mui/material";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Home from "./pages/Home/Home";
 
-function App() {
+export default function App() {
     return (
-        <Container>
-            <h1>Test</h1>
-        </Container>
+        <Router>
+            <Routes>
+                <Route path="/" element={<Home/> } />
+            </Routes>
+        </Router>
     );
 }
-
-export default App;
