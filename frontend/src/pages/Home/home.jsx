@@ -1,7 +1,12 @@
 import Navbar from "../../components/sections/Navbar/Navbar";
+import { Container, Typography } from "@mui/material";
 
-export default function Home() {
+const Home = () => {
     return (
-        <Navbar />
+        <>
+            <Navbar />
+        </>
     );
 }
+
+export default Home;

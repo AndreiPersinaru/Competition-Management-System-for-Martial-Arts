@@ -3,7 +3,7 @@ import { AppBar, Toolbar, Typography, Box, IconButton, useMediaQuery, useTheme, 
 import { Close, Menu } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
-import AnimatedTextButton from "../../ui/AnimatedTextButton/animatedTextButton";
+import AnimatedTextButton from "../../custom/AnimatedTextButton/animatedTextButton";
 
 const Navbar = () => {
     const navigate = useNavigate();
@@ -26,7 +26,7 @@ const Navbar = () => {
     ];
 
     return (
-        <AppBar elevation={8}>
+        <AppBar elevation={8} position="static">
             <Toolbar sx={{ flexDirection: "column" }}>
                 <Box width="100%" display="flex" justifyContent="space-between" alignItems="center" height="4.5rem">
                     <Typography variant={isMobile ? "h4" : "h3"} ml={{ xs: 1, md: 4 }}>
