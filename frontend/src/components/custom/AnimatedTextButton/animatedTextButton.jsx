@@ -24,7 +24,8 @@ const AnimatedTextButton = ({ children, onClick, sx }) => {
                     },
                 },
                 ...sx,
-            }}>
+            }}
+        >
             {children}
         </Typography>
     );

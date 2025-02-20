@@ -26,7 +26,7 @@ const Navbar = () => {
     ];
 
     return (
-        <AppBar elevation={8} position="static">
+        <AppBar elevation={8}>
             <Toolbar sx={{ flexDirection: "column" }}>
                 <Box width="100%" display="flex" justifyContent="space-between" alignItems="center" height="4.5rem">
                     <Typography variant={isMobile ? "h4" : "h3"} ml={{ xs: 1, md: 4 }}>
@@ -46,7 +46,8 @@ const Navbar = () => {
                     {isMobile && (
                         <IconButton
                             onClick={() => setMobileOpen(!mobileOpen)}
-                            sx={{ color: "primary.contrastText", mr: 2, transition: "transform 0.3s ease", transform: mobileOpen ? "rotate(90deg)" : "none" }}>
+                            sx={{ color: "primary.contrastText", mr: 2, transition: "transform 0.3s ease", transform: mobileOpen ? "rotate(90deg)" : "none" }}
+                        >
                             {mobileOpen ? <Close fontSize="large" /> : <Menu fontSize="large" />}
                         </IconButton>
                     )}
@@ -63,7 +64,8 @@ const Navbar = () => {
                                     navigate(path);
                                     setMobileOpen(false);
                                 }}
-                                sx={{ my: 2, width: "100%", textAlign: "end" }}>
+                                sx={{ my: 2, width: "100%", textAlign: "end" }}
+                            >
                                 {label}
                             </AnimatedTextButton>
                         ))}
