@@ -1,13 +1,20 @@
 absl-py==2.1.0
+asgiref==3.8.1
 attrs==25.1.0
 cffi==1.17.1
+click==8.1.8
+colorama==0.4.6
 contourpy==1.3.1
 cycler==0.12.1
+Django==5.1.7
 flatbuffers==25.2.10
 fonttools==4.56.0
+greenlet==3.1.1
 jax==0.5.1
 jaxlib==0.5.1
+Jinja2==3.1.6
 kiwisolver==1.4.8
+MarkupSafe==3.0.2
 matplotlib==3.10.1
 mediapipe==0.10.21
 ml_dtypes==0.5.1
@@ -18,6 +25,7 @@ opt_einsum==3.4.0
 packaging==24.2
 pillow==11.1.0
 protobuf==4.25.6
+psycopg2-binary==2.9.10
 pycparser==2.22
 pyparsing==3.2.1
 python-dateutil==2.9.0.post0
@@ -25,3 +33,6 @@ scipy==1.15.2
 sentencepiece==0.2.0
 six==1.17.0
 sounddevice==0.5.1
+sqlparse==0.5.3
+typing_extensions==4.12.2
+tzdata==2025.1
