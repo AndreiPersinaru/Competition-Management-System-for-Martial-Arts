@@ -7,10 +7,11 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { AuthContext } from "../../context/AuthContext";
 
-const Login = () => {
+const Register = () => {
     const { login } = useContext(AuthContext);
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [email, setEmail] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
@@ -34,15 +35,17 @@ const Login = () => {
         setError("");
 
         try {
-            const response = await apiClient.post("http://127.0.0.1:8000/api/login/", {
+            const response = await apiClient.post("http://127.0.0.1:8000/api/register/", {
                 username,
                 password,
+                email,
             });
-            
-            login(response.data.access, response.data.refresh);
+
+            login(response.data.tokens.access, response.data.tokens.refresh);
             navigate("/");
         } catch (error) {
-            const errorMessage = error.response?.data?.error || "Autentificare eșuată";
+            console.log(error.response);
+            const errorMessage = error.response?.data?.error || "Înregistrare eșuată";
             setError(errorMessage);
             setLoading(false);
         }
@@ -67,7 +70,7 @@ const Login = () => {
                             <LockIcon fontSize="large" color="primary" />
                         </Box>
                         <Typography variant="h5" align="center" gutterBottom>
-                            Autentificare
+                            Înregistrare
                         </Typography>
 
                         {error && (
@@ -95,6 +98,19 @@ const Login = () => {
                                 margin="normal"
                                 required
                                 fullWidth
+                                id="email"
+                                label="Adresă de email"
+                                name="email"
+                                autoComplete="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                disabled={loading}
+                                inputProps={{ maxLength: 50 }}
+                            />
+                            <TextField
+                                margin="normal"
+                                required
+                                fullWidth
                                 name="password"
                                 label="Parolă"
                                 type="password"
@@ -106,17 +122,12 @@ const Login = () => {
                                 inputProps={{ maxLength: 50 }}
                             />
                             <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }} disabled={loading}>
-                                {loading ? "Se procesează..." : "Autentifică-te"}
+                                {loading ? "Se procesează..." : "Înregistrează-te"}
                             </Button>
                             <Grid container spacing={2}>
-                                <Grid xs={6}>
-                                    <Link component={RouterLink} to="/forgot-password" variant="body2">
-                                        Ai uitat parola?
-                                    </Link>
-                                </Grid>
                                 <Grid xs={6} sx={{ textAlign: "right" }}>
-                                    <Link component={RouterLink} to="/register" variant="body2">
-                                        {"Nu ai un cont? Înregistrează-te"}
+                                    <Link component={RouterLink} to="/login" variant="body2">
+                                        {"Ai deja cont? Conectează-te"}
                                     </Link>
                                 </Grid>
                             </Grid>
@@ -128,4 +139,4 @@ const Login = () => {
     );
 };
 
-export default Login;
+export default Register;

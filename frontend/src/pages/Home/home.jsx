@@ -1,4 +1,4 @@
-import Navbar from "../../components/sections/Navbar/navbar";
+import Navbar from "../../components/sections/Navbar/Navbar";
 import { Box, Button, Container, Typography, Card, CardContent, Paper, Chip } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { EventAvailable, EmojiEvents, Timeline, ListAlt } from "@mui/icons-material";

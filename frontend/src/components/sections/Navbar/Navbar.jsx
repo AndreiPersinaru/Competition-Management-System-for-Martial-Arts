@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { AppBar, Toolbar, Typography, Box, IconButton, useMediaQuery, useTheme, Collapse, Container } from "@mui/material";
 import { Close, Menu } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../../../context/AuthContext";
 
 import AnimatedTextButton from "../../custom/AnimatedTextButton/animatedTextButton";
 
 const Navbar = () => {
+    const { logout } = useContext(AuthContext);
     const navigate = useNavigate();
     const [mobileOpen, setMobileOpen] = useState(false);
     const theme = useTheme();
@@ -40,6 +42,9 @@ const Navbar = () => {
                                     {label}
                                 </AnimatedTextButton>
                             ))}
+                            <AnimatedTextButton key={"Log out"} onClick={logout}>
+                                Log out
+                            </AnimatedTextButton>
                         </Box>
                     )}
 
