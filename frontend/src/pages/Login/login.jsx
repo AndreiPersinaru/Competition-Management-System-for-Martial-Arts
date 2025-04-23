@@ -6,6 +6,7 @@ import { Lock as LockIcon } from "@mui/icons-material";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { AuthContext } from "../../context/AuthContext";
+import backgroundImage from "../../assets/pictures/home-background.jpg";
 
 const Login = () => {
     const { login } = useContext(AuthContext);
@@ -38,7 +39,7 @@ const Login = () => {
                 username,
                 password,
             });
-            
+
             login(response.data.access, response.data.refresh);
             navigate("/");
         } catch (error) {
@@ -55,14 +56,27 @@ const Login = () => {
             {/* Login Form */}
             <Box
                 sx={{
+                    position: "relative",
                     display: "flex",
                     justifyContent: "center",
                     alignItems: "center",
                     minHeight: "100vh",
+                    overflow: "hidden",
+                    "&::before": {
+                        content: '""',
+                        position: "absolute",
+                        width: "100%",
+                        height: "100%",
+                        backgroundImage: `url(${backgroundImage})`,
+                        backgroundSize: "100% 100%",
+                        filter: "blur(2px) brightness(0.5)",
+                        transform: "scale(1.01)",
+                        zIndex: -1,
+                    },
                 }}
             >
                 <Container maxWidth="sm">
-                    <Paper elevation={4} sx={{ p: 4 }}>
+                    <Paper elevation={8} sx={{ p: 4 }}>
                         <Box sx={{ textAlign: "center", mb: 3 }}>
                             <LockIcon fontSize="large" color="primary" />
                         </Box>
