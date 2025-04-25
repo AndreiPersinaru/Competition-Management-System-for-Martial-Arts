@@ -7,16 +7,21 @@ class Club(models.Model):
     def __str__(self):
         return self.nume
 
-class User(AbstractUser):    
-    ROLE_CHOICES = [
-        ('sportiv', 'Sportiv'),
-        ('organizator', 'Organizator'),
-    ]
-    role = models.CharField(max_length=20, default='sportiv', choices=ROLE_CHOICES)
-    club = models.ForeignKey(Club, null=True, blank=True, on_delete=models.SET_NULL)
+class User(AbstractUser):
 
     def __str__(self):
-        return f"{self.username} ({self.role})"
+        return self.username
+
+class Sportiv(models.Model):
+    nume = models.CharField(max_length=100)
+    prenume = models.CharField(max_length=100)
+    cnp = models.CharField(max_length=13, unique=True)
+    club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True)
+    sex = models.CharField(max_length=10)
+    data_nastere = models.DateField()
+
+    def __str__(self):
+        return f"{self.nume} {self.prenume}"
 
 class Proba(models.Model):
     nume = models.CharField(max_length=100)
@@ -50,16 +55,16 @@ class Inscriere(models.Model):
         ('retras', 'Retras'),
         ('descalificat', 'Descalificat'),
     ]
-    sportiv = models.ForeignKey(User, on_delete=models.CASCADE, related_name='inscrieri', default=1)
-    categorie = models.ForeignKey(Categorie, on_delete=models.CASCADE, related_name='inscrieri', default=1)
+    sportiv = models.ForeignKey(Sportiv, on_delete=models.CASCADE, related_name='inscrieri')
+    categorie = models.ForeignKey(Categorie, on_delete=models.CASCADE, related_name='inscrieri')
     varsta = models.IntegerField(null=True)
     greutate = models.FloatField(null=True)
-    competitie = models.ForeignKey(Competitie, on_delete=models.CASCADE, related_name='inscrieri', default=1)
+    competitie = models.ForeignKey(Competitie, on_delete=models.CASCADE, related_name='inscrieri')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='inscris')
     data_inscriere = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.sportiv.username} - {self.categorie} - {self.competitie.nume}"
+        return f"{self.sportiv} - {self.categorie} - {self.competitie.nume}"
 
 class Saltea(models.Model):
     numar = models.IntegerField()
@@ -68,32 +73,32 @@ class Saltea(models.Model):
         return f"Saltea {self.numar}"
 
 class Meci(models.Model):
-    competitie = models.ForeignKey(Competitie, on_delete=models.CASCADE, related_name='meciuri', default=1)
-    categorie = models.ForeignKey(Categorie, on_delete=models.CASCADE, default=1)
-    sportiv1 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='meciuri_ca_sportiv1', default=1)
-    sportiv2 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='meciuri_ca_sportiv2', default=1)
-    saltea = models.ForeignKey(Saltea, on_delete=models.SET_NULL, null=True, default=1)
-    castigator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='meciuri_castigate', default=1)
+    competitie = models.ForeignKey(Competitie, on_delete=models.CASCADE, related_name='meciuri')
+    categorie = models.ForeignKey(Categorie, on_delete=models.CASCADE)
+    sportiv1 = models.ForeignKey(Sportiv, on_delete=models.CASCADE, related_name='meciuri_ca_sportiv1')
+    sportiv2 = models.ForeignKey(Sportiv, on_delete=models.CASCADE, related_name='meciuri_ca_sportiv2')
+    saltea = models.ForeignKey(Saltea, on_delete=models.SET_NULL, null=True)
+    castigator = models.ForeignKey(Sportiv, on_delete=models.SET_NULL, null=True, blank=True, related_name='meciuri_castigate')
     scor1 = models.IntegerField(default=0)
     scor2 = models.IntegerField(default=0)
     diferenta_activata = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.sportiv1.username} vs {self.sportiv2.username}"
+        return f"{self.sportiv1} vs {self.sportiv2}"
 
 class ClasamentClub(models.Model):
-    competitie = models.ForeignKey(Competitie, on_delete=models.CASCADE, default=1)
-    club = models.ForeignKey(Club, on_delete=models.CASCADE, default=1)
+    competitie = models.ForeignKey(Competitie, on_delete=models.CASCADE)
+    club = models.ForeignKey(Club, on_delete=models.CASCADE)
     puncte = models.IntegerField(default=0)
 
     def __str__(self):
         return f"{self.club.nume} - {self.puncte} puncte"
 
 class ClasamentProba(models.Model):
-    competitie = models.ForeignKey(Competitie, on_delete=models.CASCADE, default=1)
-    categorie = models.ForeignKey(Categorie, on_delete=models.CASCADE, default=1)
-    sportiv = models.ForeignKey(User, on_delete=models.CASCADE, default=1)
+    competitie = models.ForeignKey(Competitie, on_delete=models.CASCADE)
+    categorie = models.ForeignKey(Categorie, on_delete=models.CASCADE)
+    sportiv = models.ForeignKey(Sportiv, on_delete=models.CASCADE)
     puncte = models.IntegerField(default=0)
 
     def __str__(self):
-        return f"{self.sportiv.username} - {self.puncte} puncte"
+        return f"{self.sportiv} - {self.puncte} puncte"
