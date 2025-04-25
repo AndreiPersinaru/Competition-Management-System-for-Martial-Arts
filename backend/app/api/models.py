@@ -44,7 +44,9 @@ class Competitie(models.Model):
     nume = models.CharField(max_length=255)
     data_incepere = models.DateField()
     data_sfarsit = models.DateField()
-    organizator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='competitii_organizate')
+    oras = models.CharField(max_length=10, blank=True, null=True)
+    adresa = models.CharField(max_length=255, blank=True, null=True)
+    locatie_google_maps = models.URLField(blank=True, null=True)
 
     def __str__(self):
         return self.nume
