@@ -95,7 +95,6 @@ const Login = () => {
                                 margin="normal"
                                 required
                                 fullWidth
-                                id="username"
                                 label="Nume de utilizator"
                                 name="username"
                                 autoComplete="username"
@@ -103,7 +102,6 @@ const Login = () => {
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 disabled={loading}
-                                inputProps={{ maxLength: 50 }}
                             />
                             <TextField
                                 margin="normal"
@@ -112,12 +110,10 @@ const Login = () => {
                                 name="password"
                                 label="Parolă"
                                 type="password"
-                                id="password"
                                 autoComplete="current-password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 disabled={loading}
-                                inputProps={{ maxLength: 50 }}
                             />
                             <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }} disabled={loading}>
                                 {loading ? "Se procesează..." : "Autentifică-te"}

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User
+from .models import User, Competitie
 from django.contrib.auth.password_validation import validate_password
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -8,13 +8,16 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'password', 'role']
+        fields = ['id', 'username', 'email', 'password']
 
     def create(self, validated_data):
-        user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data['email'],
-            password=validated_data['password'],
-            role=validated_data.get('role', 'sportiv')
-        )
-        return user
+        return User.objects.create_user(**validated_data)
+
+class CompetitieSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Competitie
+        fields = '__all__'
+    
+    def create(self, validated_data):
+        return Competitie.objects.create(**validated_data)
+

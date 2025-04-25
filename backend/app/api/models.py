@@ -46,7 +46,7 @@ class Competitie(models.Model):
     data_sfarsit = models.DateField()
     oras = models.CharField(max_length=10, blank=True, null=True)
     adresa = models.CharField(max_length=255, blank=True, null=True)
-    locatie_google_maps = models.URLField(blank=True, null=True)
+    locatie_google_maps = models.URLField(blank=True, null=True, max_length=500)
 
     def __str__(self):
         return self.nume
