@@ -1,6 +1,10 @@
-from django.urls import path
-from rest_framework_simplejwt.views import ( TokenRefreshView, TokenObtainPairView ) 
-from .views import RegisterView, LogoutView, AddCompetitionView
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import RegisterView, LogoutView, CompetitieViewSet
+from rest_framework_simplejwt.views import TokenRefreshView, TokenObtainPairView
+
+router = DefaultRouter()
+router.register(r'competitions', CompetitieViewSet, basename='competition')
 
 urlpatterns = [
     # User auth
@@ -10,5 +14,5 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(), name='logout'),
 
     # Competitii
-    path('add-competition/', AddCompetitionView .as_view(), name='add_competition'),
+    path('', include(router.urls)),
 ]

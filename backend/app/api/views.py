@@ -1,10 +1,11 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .serializers import RegisterSerializer, CompetitieSerializer
+from .models import Competitie
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
@@ -41,13 +42,16 @@ class LogoutView(APIView):
         except Exception as e:
             return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
         
-class AddCompetitionView(APIView):
-    permission_classes = [IsAuthenticated]
-    authentication_classes = [JWTAuthentication]
+class CompetitieViewSet(viewsets.ModelViewSet):
+    queryset = Competitie.objects.all()
+    serializer_class = CompetitieSerializer
 
-    def post(self, request):
-        serializer = CompetitieSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Competition added successfully"}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [IsAuthenticated()]
+    
+    def get_authenticators(self):
+        if self.request.method == 'GET':
+            return []
+        return [JWTAuthentication()]
