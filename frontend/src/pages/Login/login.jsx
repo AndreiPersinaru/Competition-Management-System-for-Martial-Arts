@@ -17,7 +17,7 @@ const Login = () => {
     const navigate = useNavigate();
 
     const apiClient = axios.create({
-        timeout: 2000,
+        timeout: 5000,
         headers: {
             "Content-Type": "application/json",
         },
