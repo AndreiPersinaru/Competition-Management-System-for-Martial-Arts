@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Box, Button, Container, Paper, TextField, Typography, Alert } from "@mui/material";
 import backgroundImage from "../../assets/pictures/home-background.jpg";
-import Navbar from "../../components/sections/Navbar/Navbar";
+import Navbar from "../../components/sections/Navbar/navbar";
 import axios from "axios";
 import { EditCalendar } from "@mui/icons-material";
 

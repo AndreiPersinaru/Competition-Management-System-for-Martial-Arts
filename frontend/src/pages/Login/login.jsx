@@ -1,5 +1,5 @@
 import React, { useState, useContext } from "react";
-import Navbar from "../../components/sections/Navbar/Navbar";
+import Navbar from "../../components/sections/Navbar/navbar";
 import { Box, Container, Typography, TextField, Button, Paper, Link, Alert } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { Lock as LockIcon } from "@mui/icons-material";
