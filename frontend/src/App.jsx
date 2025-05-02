@@ -7,22 +7,27 @@ import Login from "./pages/Login/login";
 import Register from "./pages/Register/register";
 import CreateCompetition from "./pages/CreateCompetition/createCompetition";
 import CompetitionPage from "./pages/CompetitionPage/competitionPage";
+import Competitions from "./pages/Competitions/competitions";
 
 export default function App() {
     return (
         <Router>
             <AuthProvider>
                 <Routes>
-                    <Route path="/" element={
-                        <ProtectedRoute>
-                            <Home />
-                        </ProtectedRoute>
-                    } />
+                    <Route path="/" element={<Home />} />
                     <Route path="/brackets" element={<Brackets />} />
-                    <Route path="/create-competition" element={<CreateCompetition />} />
+                    <Route path="/competitions" element={<Competitions />} />
                     <Route path="/competition/:id" element={<CompetitionPage />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
+                    <Route
+                        path="/create-competition"
+                        element={
+                            <ProtectedRoute>
+                                <CreateCompetition />
+                            </ProtectedRoute>
+                        }
+                    />
                 </Routes>
             </AuthProvider>
         </Router>

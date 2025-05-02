@@ -7,7 +7,6 @@ import { EditCalendar } from "@mui/icons-material";
 
 const getEmbedLink = (link) => {
     const match = link.match(/src="([^"]+)"/);
-    console.log("Link Google Maps:", match);
     return match ? match[1] : "";
 };
 
@@ -58,11 +57,12 @@ const CreateCompetition = () => {
             <Navbar />
             <Box
                 sx={{
+                    mt: "2.5rem",
                     position: "relative",
                     display: "flex",
                     justifyContent: "center",
                     alignItems: "center",
-                    minHeight: "100vh",
+                    minHeight: "calc(100vh - 2.5rem)",
                     overflow: "hidden",
                     "&::before": {
                         content: '""',
@@ -99,27 +99,29 @@ const CreateCompetition = () => {
 
                         <Box component="form" onSubmit={handleSubmit}>
                             <TextField fullWidth margin="normal" label="Nume" value={nume} onChange={(e) => setNume(e.target.value)} required autoFocus />
-                            <TextField
-                                fullWidth
-                                margin="normal"
-                                label="Data Începere"
-                                type="date"
-                                slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: today, max: dataSfarsit } }}
-                                value={dataIncepere}
-                                onChange={(e) => setDataIncepere(e.target.value)}
-                                required
-                            />
-                            <TextField
-                                fullWidth
-                                margin="normal"
-                                label="Data Sfârșit"
-                                type="date"
-                                slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: dataIncepere || today } }}
-                                min={dataIncepere}
-                                value={dataSfarsit}
-                                onChange={(e) => setDataSfarsit(e.target.value)}
-                                required
-                            />
+                            <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
+                                <TextField
+                                    fullWidth
+                                    margin="normal"
+                                    label="Data Începere"
+                                    type="date"
+                                    slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: today, max: dataSfarsit } }}
+                                    value={dataIncepere}
+                                    onChange={(e) => setDataIncepere(e.target.value)}
+                                    required
+                                />
+                                <TextField
+                                    fullWidth
+                                    margin="normal"
+                                    label="Data Sfârșit"
+                                    type="date"
+                                    slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: dataIncepere || today } }}
+                                    min={dataIncepere}
+                                    value={dataSfarsit}
+                                    onChange={(e) => setDataSfarsit(e.target.value)}
+                                    required
+                                />
+                            </Box>
                             <TextField fullWidth margin="normal" label="Oraș" value={oras} onChange={(e) => setOras(e.target.value)} required />
                             <TextField fullWidth margin="normal" label="Adresă" value={adresa} onChange={(e) => setAdresa(e.target.value)} required />
                             <TextField fullWidth margin="normal" label="Link Google Maps" value={mapLink} onChange={(e) => setMapLink(e.target.value)} />

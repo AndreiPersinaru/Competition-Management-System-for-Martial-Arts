@@ -31,7 +31,7 @@ const Navbar = () => {
         <AppBar elevation={8}>
             <Toolbar sx={{ flexDirection: "column" }}>
                 <Box width="100%" display="flex" justifyContent="space-between" alignItems="center" height="4.5rem">
-                    <Typography variant={isMobile ? "h4" : "h3"} ml={{ xs: 1, md: 4 }}>
+                    <Typography variant={isMobile ? "h4" : "h3"} ml={{ xs: 1, md: 4 }} onClick={() => navigate("/")} sx={{ cursor: "pointer" }}>
                         Lorem ipsum
                     </Typography>
 

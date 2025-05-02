@@ -23,11 +23,8 @@ const HeroSection = () => (
             <Typography variant="h5" gutterBottom color="primary.contrastText" sx={{ textShadow: "4px 4px 4px black" }}>
                 Înscrieri, programări și gestionare competiții profesionale
             </Typography>
-            <Button variant="contained" color="primary" size="large" component={Link} to="/" sx={{ mt: 3, mx: 2 }}>
+            <Button variant="contained" color="primary" size="large" component={Link} to="/competitions" sx={{ mt: 3, mx: 2 }}>
                 Vezi Competiții
-            </Button>
-            <Button variant="contained" color="secondary" size="large" component={Link} to="/" sx={{ mt: 3, mx: 2 }}>
-                Înscrie-te Acum
             </Button>
         </Container>
     </Box>
