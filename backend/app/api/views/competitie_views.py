@@ -57,6 +57,10 @@ class CompetitionExcelTemplateView(APIView):
         headers = ["Nume", "Prenume", "CNP", "Vârstă", "Greutate", "Data Nastere", "Club", "Sex"] + list(probe)
         ws.append(headers)
 
+        for col in ws.columns:
+            column = col[0].column_letter
+            ws.column_dimensions[column].width = 15
+
         # img = XLImage(r"C:\Facultate\Licenta\Aplicatie\Licenta\frontend\src\assets\pictures\home-background.jpg")
         # ws.add_image(img, "M1")
 
@@ -90,6 +94,9 @@ class ExportParticipantsView(APIView):
         wb = Workbook()
         ws = wb.active
         ws.append(["Nume", "Prenume", "CNP", "Categorie vârstă", "Categorie greutate", "Data nașterii", "Proba", "Club", "Sex"])
+        for col in ws.columns:
+            column = col[0].column_letter
+            ws.column_dimensions[column].width = 15
 
         for inscriere in inscrieri:
             sportiv = inscriere.sportiv
