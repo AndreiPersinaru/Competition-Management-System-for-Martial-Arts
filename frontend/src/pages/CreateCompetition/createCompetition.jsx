@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Box, Button, Container, Paper, TextField, Typography, Alert } from "@mui/material";
+import { Box, Button, Container, Paper, TextField, Typography, Alert, FormGroup, FormControlLabel, Checkbox } from "@mui/material";
 import backgroundImage from "../../assets/pictures/home-background.jpg";
 import Navbar from "../../components/sections/Navbar/navbar";
 import axios from "axios";
@@ -9,6 +9,8 @@ const getEmbedLink = (link) => {
     const match = link.match(/src="([^"]+)"/);
     return match ? match[1] : "";
 };
+
+const availableProbes = ["Kato", "Imiespafis", "Pleris Agon"];
 
 const CreateCompetition = () => {
     const accessToken = localStorage.getItem("access_token");
@@ -20,7 +22,12 @@ const CreateCompetition = () => {
     const [mapLink, setMapLink] = useState("");
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
+    const [selectedProbes, setSelectedProbes] = useState([]);
     const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split("T")[0];
+
+    const handleProbeChange = (probe) => {
+        setSelectedProbes((prev) => (prev.includes(probe) ? prev.filter((p) => p !== probe) : [...prev, probe]));
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -37,6 +44,7 @@ const CreateCompetition = () => {
                     oras,
                     adresa,
                     locatie_google_maps: getEmbedLink(mapLink),
+                    probe: selectedProbes,
                 },
                 { headers: { Authorization: `Bearer ${accessToken}` } }
             );
@@ -47,7 +55,9 @@ const CreateCompetition = () => {
             setOras("");
             setAdresa("");
             setMapLink("");
-        } catch {
+            setSelectedProbes([]);
+        } catch (error){
+            console.error("Error creating competition:", error.response?.data);
             setError("Eroare la creare competiție.");
         }
     };
@@ -57,12 +67,13 @@ const CreateCompetition = () => {
             <Navbar />
             <Box
                 sx={{
-                    mt: "2.5rem",
+                    pt: "8rem",
+                    pb: "4rem",
                     position: "relative",
                     display: "flex",
                     justifyContent: "center",
                     alignItems: "center",
-                    minHeight: "calc(100vh - 2.5rem)",
+                    minHeight: "100vh",
                     overflow: "hidden",
                     "&::before": {
                         content: '""',
@@ -116,7 +127,6 @@ const CreateCompetition = () => {
                                     label="Data Sfârșit"
                                     type="date"
                                     slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: dataIncepere || today } }}
-                                    min={dataIncepere}
                                     value={dataSfarsit}
                                     onChange={(e) => setDataSfarsit(e.target.value)}
                                     required
@@ -125,6 +135,16 @@ const CreateCompetition = () => {
                             <TextField fullWidth margin="normal" label="Oraș" value={oras} onChange={(e) => setOras(e.target.value)} required />
                             <TextField fullWidth margin="normal" label="Adresă" value={adresa} onChange={(e) => setAdresa(e.target.value)} required />
                             <TextField fullWidth margin="normal" label="Link Google Maps" value={mapLink} onChange={(e) => setMapLink(e.target.value)} />
+
+                            <Typography variant="subtitle1" sx={{ mt: 2 }}>
+                                Selectează probele:
+                            </Typography>
+                            <FormGroup>
+                                {availableProbes.map((probe) => (
+                                    <FormControlLabel key={probe} control={<Checkbox checked={selectedProbes.includes(probe)} onChange={() => handleProbeChange(probe)} />} label={probe} />
+                                ))}
+                            </FormGroup>
+
                             <Button type="submit" variant="contained" fullWidth sx={{ mt: 2 }}>
                                 Salvează
                             </Button>

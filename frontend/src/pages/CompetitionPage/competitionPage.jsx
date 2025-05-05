@@ -1,10 +1,11 @@
-import { Box, Typography, Card, useTheme, useMediaQuery } from "@mui/material";
+import { Box, Typography, Card, useTheme, useMediaQuery, List, ListItem, ListItemIcon, ListItemText } from "@mui/material";
 import axios from "axios";
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Navbar from "../../components/sections/Navbar/navbar";
 import Footer from "../../components/sections/Footer/footer";
-import { CalendarToday, LocationOn } from "@mui/icons-material";
+import { ArrowRight, CalendarToday, LocationOn, SportsMartialArts } from "@mui/icons-material";
+import Excel from "../../components/sections/Excel/excel";
 
 export default function CompetitionPage() {
     const { id } = useParams();
@@ -63,24 +64,20 @@ export default function CompetitionPage() {
         );
     }
 
-    // Format dates - extract day and month
     const formatDate = (startDateString, endDateString) => {
         const startDate = new Date(startDateString);
         const endDate = new Date(endDateString);
 
-        // Check if it's the same day
         const sameDay = startDate.toDateString() === endDate.toDateString();
 
         if (sameDay) {
             return `${startDate.getDate()} ${getMonthName(startDate.getMonth())} ${startDate.getFullYear()}`;
         } else {
-            // Check if it's the same month and year
             const sameMonthYear = startDate.getMonth() === endDate.getMonth() && startDate.getFullYear() === endDate.getFullYear();
 
             if (sameMonthYear) {
                 return `${startDate.getDate()}-${endDate.getDate()} ${getMonthName(endDate.getMonth())} ${endDate.getFullYear()}`;
             } else {
-                // Different months
                 return `${startDate.getDate()} ${getMonthName(startDate.getMonth())} - ${endDate.getDate()} ${getMonthName(endDate.getMonth())} ${endDate.getFullYear()}`;
             }
         }
@@ -137,6 +134,30 @@ export default function CompetitionPage() {
                             Adresă: <strong>{competition.adresa}</strong>
                         </Typography>
                     </Box>
+                    <Box sx={{ mb: 4, pr: 5 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                            <SportsMartialArts color="primary" sx={{ mr: 1 }} />
+                            <Typography variant="h4" sx={{ display: "flex", alignItems: "center" }}>
+                                Probele Disponibile
+                            </Typography>
+                        </Box>
+                        {competition.probe && competition.probe.length > 0 ? (
+                            <List>
+                                {competition.probe.map((proba, index) => (
+                                    <ListItem key={index}>
+                                        <ListItemIcon>
+                                            <ArrowRight color="primary" />
+                                        </ListItemIcon>
+                                        <ListItemText primary={proba.nume} sx={{ ml: -3 }} />
+                                    </ListItem>
+                                ))}
+                            </List>
+                        ) : (
+                            <Typography variant="body1" sx={{ ml: 4 }}>
+                                Nu există probe disponibile.
+                            </Typography>
+                        )}
+                    </Box>
                 </Box>
 
                 {/* Right side - Google Maps */}
@@ -162,6 +183,7 @@ export default function CompetitionPage() {
                     />
                 </Box>
             </Box>
+            <Excel />
             <Footer />
         </>
     );
