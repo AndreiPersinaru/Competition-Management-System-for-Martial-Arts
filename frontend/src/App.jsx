@@ -8,6 +8,8 @@ import Register from "./pages/Register/register";
 import CreateCompetition from "./pages/CreateCompetition/createCompetition";
 import CompetitionPage from "./pages/CompetitionPage/competitionPage";
 import Competitions from "./pages/Competitions/competitions";
+import MatchDashboard from "./pages/MatchDashboard/matchDashboard";
+import PublicView from "./pages/PublicView/publicView";
 
 export default function App() {
     return (
@@ -20,6 +22,8 @@ export default function App() {
                     <Route path="/competition/:id" element={<CompetitionPage />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
+                    <Route path="/match-dashboard" element={<MatchDashboard />} />
+                    <Route path="/public-view" element={<PublicView />} />
                     <Route
                         path="/create-competition"
                         element={
