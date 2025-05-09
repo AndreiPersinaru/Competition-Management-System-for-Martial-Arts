@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
-import { Box, Button, Typography, IconButton, Switch, Paper, Divider, Badge } from "@mui/material";
+import { Box, Button, Typography, IconButton, Switch, Paper, Divider } from "@mui/material";
 import Grid from "@mui/material/Grid2";
-import { Add, Remove, Pause, PlayArrow, Sports, Close } from "@mui/icons-material";
+import { Add, Remove, Pause, PlayArrow } from "@mui/icons-material";
 
 import Navbar from "../../components/sections/Navbar/navbar";
 
@@ -11,23 +11,72 @@ const MatchDashboard = () => {
     const [score, setScore] = useState([0, 0]);
     const [penalties, setPenalties] = useState([0, 0]);
     const [diffWin, setDiffWin] = useState(false);
+
+    // Culorile pentru sportivi
+    const blueColor = "#198dd2";
+    const whiteColor = "#ffffff";
+    const blueBorderColor = "#0b5d8f";
+    const whiteBorderColor = "#cccccc";
+
+    // Exemplu de metadate (înlocuiește cu API call în viitor)
+    const [metadata, setMetadata] = useState({
+        playerNames: ["Persinaru A.", "Chirperean E."],
+        clubs: ["Shin Daito", "Davidans"],
+        category: "-77kg",
+    });
+
+    const channel = useRef(new BroadcastChannel("match_channel"));
     const timerRef = useRef(null);
+    const scoreRef = useRef(score);
+    const penaltiesRef = useRef(penalties);
+
+    const broadcastState = () => {
+        channel.current.postMessage({
+            type: "update",
+            score: scoreRef.current,
+            penalties: penaltiesRef.current,
+            time,
+            metadata,
+        });
+    };
 
     useEffect(() => {
         if (running && time > 0) {
-            timerRef.current = setInterval(() => setTime((t) => t - 1), 1000);
+            timerRef.current = setInterval(() => {
+                setTime((t) => {
+                    const newTime = t - 1;
+                    channel.current.postMessage({
+                        type: "update",
+                        score: scoreRef.current,
+                        penalties: penaltiesRef.current,
+                        time: newTime,
+                        running: true,
+                        metadata,
+                    });
+                    return newTime;
+                });
+            }, 1000);
         } else {
             clearInterval(timerRef.current);
         }
         return () => clearInterval(timerRef.current);
-    }, [running, time]);
+    }, [running]);
 
     useEffect(() => {
+        scoreRef.current = score;
         if (diffWin && Math.abs(score[0] - score[1]) >= 10) {
             setRunning(false);
             console.log("Meci oprit din cauza diferentei de 10 puncte");
         }
     }, [score, diffWin]);
+
+    useEffect(() => {
+        penaltiesRef.current = penalties;
+    }, [penalties]);
+
+    useEffect(() => {
+        broadcastState();
+    }, [metadata]);
 
     const formatTime = (t) => `${Math.floor(t / 60)}:${(t % 60).toString().padStart(2, "0")}`;
 
@@ -35,6 +84,8 @@ const MatchDashboard = () => {
         setScore((prev) => {
             const newScore = [...prev];
             newScore[player] += value;
+            scoreRef.current = newScore;
+            broadcastState();
             return newScore;
         });
     };
@@ -42,7 +93,10 @@ const MatchDashboard = () => {
     const handleRemoveScore = (player, value) => {
         setScore((prev) => {
             const newScore = [...prev];
+            if (newScore[player] - value < 0) return prev;
             newScore[player] -= value;
+            scoreRef.current = newScore;
+            broadcastState();
             return newScore;
         });
     };
@@ -51,7 +105,6 @@ const MatchDashboard = () => {
         setPenalties((prev) => {
             const newPenalties = [...prev];
             newPenalties[player] += 1;
-
             if (newPenalties[player] === 2) handleAddScore(player === 0 ? 1 : 0, 1);
             if (newPenalties[player] === 3) handleAddScore(player === 0 ? 1 : 0, 1);
             if (newPenalties[player] === 4) {
@@ -59,9 +112,8 @@ const MatchDashboard = () => {
                 console.log(`Sportivul ${player + 1} a fost descalificat`);
             }
             if (newPenalties[player] > 4) newPenalties[player] = 4;
-
-            console.log(newPenalties[player]);
-
+            penaltiesRef.current = newPenalties;
+            broadcastState();
             return newPenalties;
         });
     };
@@ -70,43 +122,64 @@ const MatchDashboard = () => {
         setPenalties((prev) => {
             const newPenalties = [...prev];
             newPenalties[player] -= 1;
-
             if (newPenalties[player] < 0) newPenalties[player] = 0;
             if (newPenalties[player] === 1) handleRemoveScore(player === 0 ? 1 : 0, 1);
             if (newPenalties[player] === 2) handleRemoveScore(player === 0 ? 1 : 0, 1);
-            console.log(newPenalties[player]);
+            penaltiesRef.current = newPenalties;
+            broadcastState();
             return newPenalties;
         });
+    };
+
+    const handleAddTime = (value) => {
+        setTime((prevTime) => {
+            const newTime = prevTime + value;
+            channel.current.postMessage({
+                type: "update",
+                score: scoreRef.current,
+                penalties: penaltiesRef.current,
+                time: newTime,
+                running,
+                metadata,
+            });
+            return newTime;
+        });
+    };
+
+    const handleRemoveTime = (value) => {
+        setTime((prevTime) => {
+            const newTime = Math.max(0, prevTime - value);
+            channel.current.postMessage({
+                type: "update",
+                score: scoreRef.current,
+                penalties: penaltiesRef.current,
+                time: newTime,
+                running,
+                metadata,
+            });
+            return newTime;
+        });
+    };
+
+    const openPublicScreen = () => {
+        window.open("/public-view", "_blank", "width=800,height=600,noopener,noreferrer");
+        setTimeout(() => {
+            broadcastState();
+        }, 500);
     };
 
     return (
         <>
             <Navbar />
-            <Box height={"100vh"}>
-                <Typography variant="h4" align="center" gutterBottom sx={{ mb: 4 }}>
-                    <Sports sx={{ mr: 2, verticalAlign: "middle" }} />
-                    Control Meci
-                </Typography>
-
-                {/* Timer Section */}
+            <Box height={"calc(100vh - 4.5rem)"} mt={"4.5rem"}>
                 <Box sx={{ textAlign: "center", mb: 6 }}>
-                    <Typography
-                        variant="h2"
-                        sx={{
-                            fontSize: "4rem",
-                            fontFamily: "monospace",
-                            backgroundColor: "rgba(0,0,0,0.1)",
-                            px: 4,
-                            py: 2,
-                            borderRadius: 2,
-                        }}
-                    >
+                    <Typography variant="h1" py={2}>
                         {formatTime(time)}
                     </Typography>
 
                     <Grid container spacing={2} justifyContent="center" sx={{ mt: 2 }}>
                         <Grid>
-                            <Button variant="outlined" startIcon={<Remove />} onClick={() => setTime((t) => Math.max(0, t - 30))} size="large">
+                            <Button variant="outlined" startIcon={<Remove />} onClick={() => handleRemoveTime(30)} size="large">
                                 -30s
                             </Button>
                         </Grid>
@@ -116,89 +189,136 @@ const MatchDashboard = () => {
                             </IconButton>
                         </Grid>
                         <Grid>
-                            <Button variant="outlined" startIcon={<Add />} onClick={() => setTime((t) => t + 30)} size="large">
+                            <Button variant="outlined" startIcon={<Add />} onClick={() => handleAddTime(30)} size="large">
                                 +30s
                             </Button>
                         </Grid>
                     </Grid>
                 </Box>
 
-                <Divider sx={{ my: 4 }} />
-
-                {/* Players Section */}
                 <Grid container spacing={6} justifyContent="space-between">
-                    {[0, 1].map((player) => (
-                        <Grid key={player} xs={12} md={5}>
-                            <Paper
-                                elevation={2}
-                                sx={{
-                                    p: 3,
-                                    borderLeft: player === 0 ? "4px solid #1976d2" : "4px solid #d32f2f",
-                                    transform: player === 1 ? "scaleX(-1)" : "none",
-                                }}
-                            >
-                                <Box sx={{ transform: player === 1 ? "scaleX(-1)" : "none" }}>
-                                    <Typography variant="h5" sx={{ mb: 2 }}>
-                                        Sportiv {player + 1}
-                                    </Typography>
+                    {[0, 1].map((player) => {
+                        const isBlue = player === 0;
+                        const bgColor = isBlue ? blueColor : whiteColor;
+                        const borderColor = isBlue ? blueBorderColor : whiteBorderColor;
+                        const textColor = isBlue ? "white" : "black";
 
-                                    <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
-                                        <Typography variant="h3" sx={{ flexGrow: 1 }}>
-                                            {score[player]}
+                        return (
+                            <Grid key={player} xs={12} md={5}>
+                                <Paper
+                                    elevation={2}
+                                    sx={{
+                                        p: 5,
+                                        minWidth: 520,
+                                        backgroundColor: bgColor,
+                                        color: textColor,
+                                        border: `3px solid ${borderColor}`,
+                                        borderRadius: 2,
+                                        transform: player === 1 ? "scaleX(-1)" : "none",
+                                    }}
+                                >
+                                    <Box sx={{ transform: player === 1 ? "scaleX(-1)" : "none" }}>
+                                        <Typography variant="h5" mb={2}>
+                                            {metadata.playerNames[player]} ({metadata.clubs[player]})
                                         </Typography>
-                                        <Box sx={{ display: "flex", gap: 1 }}>
-                                            {[1, 2, 3].map((val) => (
-                                                <Button key={val} variant="contained" onClick={() => handleAddScore(player, val)} sx={{ minWidth: 40 }}>
-                                                    +{val}
-                                                </Button>
-                                            ))}
-                                        </Box>
-                                        <Box sx={{ display: "flex", gap: 1, ml: 4 }}>
-                                            {[1, 2, 3].map((val) => (
-                                                <Button key={val} variant="contained" onClick={() => handleRemoveScore(player, val)} sx={{ minWidth: 40 }}>
-                                                    -{val}
-                                                </Button>
-                                            ))}
-                                        </Box>
-                                    </Box>
 
-                                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                                        <Button variant="outlined" color="error" onClick={() => handleAddPenalty(player)}>
-                                            Adaugă Penalizare
-                                        </Button>
-                                        <Button variant="outlined" color="error" onClick={() => handleRemovePenalty(player)}>
-                                            Scoate Penalizare
-                                        </Button>
+                                        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
+                                            <Typography variant="h2" minWidth={70}>
+                                                {score[player]}
+                                            </Typography>
+                                            <Box sx={{ display: "flex", gap: 1 }}>
+                                                {[1, 2, 3].map((val) => (
+                                                    <Button
+                                                        key={val}
+                                                        variant="contained"
+                                                        onClick={() => handleAddScore(player, val)}
+                                                        sx={{
+                                                            minWidth: 40,
+                                                            bgcolor: isBlue ? "#0d6efd" : "grey.300",
+                                                            color: isBlue ? "white" : "black",
+                                                            "&:hover": {
+                                                                bgcolor: isBlue ? "#0b5ed7" : "grey.400",
+                                                            },
+                                                        }}
+                                                    >
+                                                        +{val}
+                                                    </Button>
+                                                ))}
+                                            </Box>
+                                            <Box sx={{ display: "flex", gap: 1, ml: 4 }}>
+                                                {[1, 2, 3].map((val) => (
+                                                    <Button
+                                                        key={val}
+                                                        variant="contained"
+                                                        onClick={() => handleRemoveScore(player, val)}
+                                                        sx={{
+                                                            minWidth: 40,
+                                                            bgcolor: isBlue ? "#0d6efd" : "grey.300",
+                                                            color: isBlue ? "white" : "black",
+                                                            "&:hover": {
+                                                                bgcolor: isBlue ? "#0b5ed7" : "grey.400",
+                                                            },
+                                                        }}
+                                                    >
+                                                        -{val}
+                                                    </Button>
+                                                ))}
+                                            </Box>
+                                        </Box>
+
+                                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                            <Button
+                                                variant="outlined"
+                                                color="error"
+                                                onClick={() => handleAddPenalty(player)}
+                                                sx={{
+                                                    borderColor: isBlue ? "black" : "",
+                                                    color: isBlue ? "black" : "",
+                                                    bgcolor: isBlue ? "white" : "",
+                                                }}
+                                            >
+                                                Adaugă Penalizare
+                                            </Button>
+                                            <Button
+                                                variant="outlined"
+                                                color="error"
+                                                onClick={() => handleRemovePenalty(player)}
+                                                sx={{
+                                                    borderColor: isBlue ? "black" : "",
+                                                    color: isBlue ? "black" : "",
+                                                    bgcolor: isBlue ? "white" : "",
+                                                }}
+                                            >
+                                                Scoate Penalizare
+                                            </Button>
+                                            <Typography variant="h6" sx={{ ml: 2 }}>
+                                                Penalizări: {penalties[player]}
+                                            </Typography>
+                                        </Box>
                                     </Box>
-                                </Box>
-                            </Paper>
-                        </Grid>
-                    ))}
+                                </Paper>
+                            </Grid>
+                        );
+                    })}
                 </Grid>
 
-                {/* Settings Section */}
                 <Grid container justifyContent="center" sx={{ mt: 4 }}>
                     <Grid xs={12} md={8}>
-                        <Paper elevation={0} sx={{ p: 2, bgcolor: "background.default" }}>
-                            <Box
-                                sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                    gap: 2,
-                                }}
-                            >
-                                <Typography variant="body1">Oprire automată la diferență de 10 puncte</Typography>
+                        <Paper elevation={0} sx={{ p: 2 }}>
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+                                <Typography variant="body1">Oprire meci la diferență de 10 puncte</Typography>
                                 <Switch checked={diffWin} onChange={() => setDiffWin((v) => !v)} color="primary" />
                             </Box>
                         </Paper>
                     </Grid>
                 </Grid>
 
-                {/* Save Button */}
                 <Box sx={{ textAlign: "center", mt: 6 }}>
-                    <Button variant="contained" size="large" startIcon={<Sports />} onClick={() => console.log({ score, penalties, time })} sx={{ px: 6, py: 2 }}>
+                    <Button variant="contained" size="large" onClick={() => console.log({ score, penalties, time })} sx={{ px: 6, py: 2 }}>
                         Finalizează Meciul
+                    </Button>
+                    <Button variant="contained" size="large" onClick={openPublicScreen} sx={{ px: 6, py: 2, ml: 4 }}>
+                        Ecran Public
                     </Button>
                 </Box>
             </Box>
