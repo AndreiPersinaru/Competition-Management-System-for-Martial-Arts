@@ -106,7 +106,7 @@ const MatchDashboard = () => {
             const newPenalties = [...prev];
             newPenalties[player] += 1;
             if (newPenalties[player] === 2) handleAddScore(player === 0 ? 1 : 0, 1);
-            if (newPenalties[player] === 3) handleAddScore(player === 0 ? 1 : 0, 1);
+            if (newPenalties[player] === 3) handleAddScore(player === 0 ? 1 : 0, 2);
             if (newPenalties[player] === 4) {
                 setRunning(false);
                 console.log(`Sportivul ${player + 1} a fost descalificat`);
@@ -124,7 +124,7 @@ const MatchDashboard = () => {
             newPenalties[player] -= 1;
             if (newPenalties[player] < 0) newPenalties[player] = 0;
             if (newPenalties[player] === 1) handleRemoveScore(player === 0 ? 1 : 0, 1);
-            if (newPenalties[player] === 2) handleRemoveScore(player === 0 ? 1 : 0, 1);
+            if (newPenalties[player] === 2) handleRemoveScore(player === 0 ? 1 : 0, 2);
             penaltiesRef.current = newPenalties;
             broadcastState();
             return newPenalties;

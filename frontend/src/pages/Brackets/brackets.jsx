@@ -155,7 +155,7 @@ const TournamentBrackets = () => {
 
             <Paper elevation={3} sx={{ p: 2, overflowX: "auto", mb: 4 }}>
                 <Box sx={{ display: "flex", justifyContent: "center" }}>
-                    <Bracket rounds={brackets} renderSeedComponent={CustomSeed} roundTitleComponent={CustomTitle} swipeableProps={{ enableMouseEvents: true }} mobileBreakpoint={760} />
+                    <Bracket rounds={brackets}  roundTitleComponent={CustomTitle} swipeableProps={{ enableMouseEvents: true }} mobileBreakpoint={760} />
                 </Box>
             </Paper>
 

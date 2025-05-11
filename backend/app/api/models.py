@@ -15,6 +15,7 @@ class User(AbstractUser):
 class Sportiv(models.Model):
     nume = models.CharField(max_length=100)
     prenume = models.CharField(max_length=100)
+    nr_legitimatie = models.CharField(max_length=20, blank=True, null=True)
     cnp = models.CharField(max_length=13, unique=True)
     club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True)
     sex = models.CharField(max_length=10)
@@ -60,6 +61,7 @@ class Inscriere(models.Model):
     ]
     sportiv = models.ForeignKey(Sportiv, on_delete=models.CASCADE, related_name='inscrieri')
     categorie = models.ForeignKey(Categorie, on_delete=models.CASCADE, related_name='inscrieri')
+    meci = models.CharField(max_length=20, blank=True, null=True)
     varsta = models.IntegerField(null=True)
     greutate = models.FloatField(null=True)
     competitie = models.ForeignKey(Competitie, on_delete=models.CASCADE, related_name='inscrieri')

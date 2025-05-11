@@ -48,34 +48,41 @@ class CompetitionExcelTemplateView(APIView):
 
     def get(self, request, competition_id):
         wb = Workbook()
-        ws = wb.active
-        ws.title = "Sportivi"
-
         competitie = get_object_or_404(Competitie, id=competition_id)
         probe = list(competitie.probe.values_list('nume', flat=True))
 
-        headers = ["Nume", "Prenume", "CNP", "Vârstă", "Greutate", "Data Nastere", "Club", "Sex"] + list(probe)
+        ws = wb.active
+        ws.title = "Sportivi"
+
+        headers = ["NR LEG", "NUME SI PRENUME", "CLUB", "GEN", "CNP", "DATA NASTERII", "CATEGORIE VARSTA", "KG", "CATEGORIE KG", "PROBA", "MECI", "TAXA"]
         ws.append(headers)
 
-        for col in ws.columns:
-            column = col[0].column_letter
-            ws.column_dimensions[column].width = 15
+        for i, header in enumerate(headers, start=1):
+            col_letter = get_column_letter(i)
+            ws.column_dimensions[col_letter].width = len(header) + 7
+            for row in range(1, 1001):
+                ws[f"{col_letter}{row}"].font = openpyxl.styles.Font(bold=True, name="Calibri1")
+                ws.row_dimensions[row].height = 25
+                ws[f"{col_letter}{row}"].border = openpyxl.styles.Border(
+                    left=openpyxl.styles.Side(style='thin'),
+                    right=openpyxl.styles.Side(style='thin'),
+                    top=openpyxl.styles.Side(style='thin'),
+                    bottom=openpyxl.styles.Side(style='thin')
+                )
+                
 
-        # img = XLImage(r"C:\Facultate\Licenta\Aplicatie\Licenta\frontend\src\assets\pictures\home-background.jpg")
-        # ws.add_image(img, "M1")
+        # Validare Gen
+        dv_gen = DataValidation(type="list", formula1='"Masculin,Feminin"', allow_blank=False)
+        ws.add_data_validation(dv_gen)
+        dv_gen.add("D2:D1000")
 
-        # Validare Sex
-        dv_sex = DataValidation(type="list", formula1='"M,F"', allow_blank=False)
-        ws.add_data_validation(dv_sex)
-        dv_sex.add("H2:H1000")
-
-        # Validare Proba (X sau -) pentru fiecare coloană cu probă
-        for idx, _ in enumerate(probe, start=1):
-            col_letter = get_column_letter(8 + idx)
-            dv = DataValidation(type="list", formula1='"x,-"', allow_blank=True)
-            ws.add_data_validation(dv)
-            dv.add(f"{col_letter}2:{col_letter}1000")
-
+        # Validare Proba
+        if probe:
+            probe_list_str = ','.join([f'{p}' for p in probe])
+            dv_probe = DataValidation(type="list", formula1='"' + probe_list_str + '"', allow_blank=False)
+            ws.add_data_validation(dv_probe)
+            dv_probe.add("J2:J1000")
+    
         response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         filename = f"Inscriere {competitie.nume}.xlsx"
         response["Content-Disposition"] = f"attachment; filename*=UTF-8''{quote(filename)}"
