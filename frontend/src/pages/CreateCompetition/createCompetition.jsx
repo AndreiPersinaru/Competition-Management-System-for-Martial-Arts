@@ -10,7 +10,7 @@ const getEmbedLink = (link) => {
     return match ? match[1] : "";
 };
 
-const availableProbes = ["Kato", "Imiespafis", "Pleris Agon"];
+const availableProbes = ["Palaismata", "Polydamas", "Kato", "Imiepafis", "Pleris Agon", "Pix Lax"];
 
 const CreateCompetition = () => {
     const accessToken = localStorage.getItem("access_token");
@@ -26,7 +26,20 @@ const CreateCompetition = () => {
     const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split("T")[0];
 
     const handleProbeChange = (probe) => {
-        setSelectedProbes((prev) => (prev.includes(probe) ? prev.filter((p) => p !== probe) : [...prev, probe]));
+        setSelectedProbes((prev) => {
+            const isProbeSelected = prev.some((p) => p.startsWith(probe));
+
+            if (["Palaismata", "Polydamas"].includes(probe)) {
+                if (!isProbeSelected) {
+                    const derivedProbes = [`${probe} Masculin`, `${probe} Mixt`, `${probe} Feminin`];
+                    return [...prev, ...derivedProbes];
+                } else {
+                    return prev.filter((p) => !p.startsWith(probe));
+                }
+            }
+
+            return prev.includes(probe) ? prev.filter((p) => p !== probe) : [...prev, probe];
+        });
     };
 
     const handleSubmit = async (e) => {
@@ -56,7 +69,7 @@ const CreateCompetition = () => {
             setAdresa("");
             setMapLink("");
             setSelectedProbes([]);
-        } catch (error){
+        } catch (error) {
             console.error("Error creating competition:", error.response?.data);
             setError("Eroare la creare competiție.");
         }
@@ -141,7 +154,7 @@ const CreateCompetition = () => {
                             </Typography>
                             <FormGroup>
                                 {availableProbes.map((probe) => (
-                                    <FormControlLabel key={probe} control={<Checkbox checked={selectedProbes.includes(probe)} onChange={() => handleProbeChange(probe)} />} label={probe} />
+                                    <FormControlLabel key={probe} control={<Checkbox checked={selectedProbes.some((p) => p.startsWith(probe))} onChange={() => handleProbeChange(probe)} />} label={probe} />
                                 ))}
                             </FormGroup>
 

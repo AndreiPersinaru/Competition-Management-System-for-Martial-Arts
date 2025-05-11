@@ -78,6 +78,7 @@ class CompetitionExcelTemplateView(APIView):
 
         # Validare Proba
         if probe:
+            print(f"Probe: {probe}")
             probe_list_str = ','.join([f'{p}' for p in probe])
             dv_probe = DataValidation(type="list", formula1='"' + probe_list_str + '"', allow_blank=False)
             ws.add_data_validation(dv_probe)
