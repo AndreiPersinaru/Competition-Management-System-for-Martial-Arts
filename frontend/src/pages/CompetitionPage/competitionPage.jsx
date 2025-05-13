@@ -19,7 +19,25 @@ export default function CompetitionPage() {
         const fetchCompetition = async () => {
             try {
                 const response = await axios.get(`http://localhost:8000/api/competitions/${id}/`);
-                setCompetition(response.data);
+                let data = response.data;
+                const map = new Map();
+                data.probe.forEach((proba) => {
+                    let numeSimplificat = proba.nume;
+
+                    if (numeSimplificat.toLowerCase().includes("palaismata")) {
+                        numeSimplificat = "Palaismata";
+                    } else if (numeSimplificat.toLowerCase().includes("polydamas")) {
+                        numeSimplificat = "Polydamas";
+                    }
+
+                    if (!map.has(numeSimplificat)) {
+                        map.set(numeSimplificat, { id: proba.id, nume: numeSimplificat });
+                    }
+                });
+
+                data.probe = Array.from(map.values());
+
+                setCompetition(data);
                 setLoading(false);
             } catch (error) {
                 setError("Eroare la încărcarea competiției. Te rugăm să încerci mai târziu.");

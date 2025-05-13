@@ -35,11 +35,10 @@ class Categorie(models.Model):
     sex = models.CharField(max_length=10)
     varsta_min = models.IntegerField()
     varsta_max = models.IntegerField()
-    greutate_min = models.FloatField()
-    greutate_max = models.FloatField()
+    categorie_greutate = models.CharField(max_length=10, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.proba.nume} - {self.sex} - {self.greutate_min}-{self.greutate_max}kg"
+        return f"{self.proba.nume} - {self.sex} - {self.categorie_greutate}kg"
 
 class Competitie(models.Model):
     nume = models.CharField(max_length=255)
@@ -63,10 +62,10 @@ class Inscriere(models.Model):
     categorie = models.ForeignKey(Categorie, on_delete=models.CASCADE, related_name='inscrieri')
     meci = models.CharField(max_length=20, blank=True, null=True)
     varsta = models.IntegerField(null=True)
-    greutate = models.FloatField(null=True)
     competitie = models.ForeignKey(Competitie, on_delete=models.CASCADE, related_name='inscrieri')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='inscris')
     data_inscriere = models.DateTimeField(auto_now_add=True)
+    meci_demonstrativ = models.CharField(max_length=20, blank=True, null=True)
 
     def __str__(self):
         return f"{self.sportiv} - {self.categorie} - {self.competitie.nume}"

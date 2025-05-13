@@ -101,25 +101,48 @@ class ExportParticipantsView(APIView):
 
         wb = Workbook()
         ws = wb.active
-        ws.append(["Nume", "Prenume", "CNP", "Categorie vârstă", "Categorie greutate", "Data nașterii", "Proba", "Club", "Sex"])
-        for col in ws.columns:
-            column = col[0].column_letter
-            ws.column_dimensions[column].width = 15
+        ws.title = "Sportivi"
 
+        headers = ["NR LEG", "NUME SI PRENUME", "CLUB", "GEN", "CNP", "DATA NASTERII", "CATEGORIE VARSTA", "CATEGORIE KG", "PROBA", "MECI", "TAXA"]
+        ws.append(headers)
+
+        for i, header in enumerate(headers, start=1):
+            col_letter = get_column_letter(i)
+            ws.column_dimensions[col_letter].width = len(header) + 7
+            for row in range(1, 1001):
+                ws[f"{col_letter}{row}"].font = openpyxl.styles.Font(bold=True, name="Calibri1")
+                ws.row_dimensions[row].height = 25
+                ws[f"{col_letter}{row}"].border = openpyxl.styles.Border(
+                    left=openpyxl.styles.Side(style='thin'),
+                    right=openpyxl.styles.Side(style='thin'),
+                    top=openpyxl.styles.Side(style='thin'),
+                    bottom=openpyxl.styles.Side(style='thin')
+                )
+
+        row_num = 2
         for inscriere in inscrieri:
             sportiv = inscriere.sportiv
             categorie = inscriere.categorie
-            ws.append([
-                sportiv.nume,
-                sportiv.prenume,
+            if any(p.lower() in categorie.proba.nume.lower() for p in ["Polydamas", "Palaismata"]):
+                taxa = 75
+            else:
+                taxa = 100
+            values = [
+                sportiv.nr_legitimatie,
+                f"{sportiv.nume} {sportiv.prenume}",
+                sportiv.club.nume if sportiv.club else "",
+                sportiv.sex,
                 sportiv.cnp,
-                f"{categorie.varsta_min}-{categorie.varsta_max}",
-                f"{categorie.greutate_min}-{categorie.greutate_max}",
                 sportiv.data_nastere.strftime("%d.%m.%Y"),
+                f"{categorie.varsta_min}-{categorie.varsta_max}",
+                f"{categorie.categorie_greutate} KG" if categorie.categorie_greutate else "",
                 categorie.proba.nume,
-                sportiv.club.nume,
-                sportiv.sex
-            ])
+                inscriere.meci_demonstrativ,
+                taxa,
+            ]
+            for col_num, value in enumerate(values, start=1):
+                ws.cell(row=row_num, column=col_num).value = value
+            row_num += 1
 
         response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         filename = f"Lista Sportivi {competitie.nume}.xlsx"
@@ -149,31 +172,55 @@ class UploadParticipantsView(APIView):
         added_count = 0
 
         header = [cell.value for cell in ws[1]]
-        probe_nume = [nume for nume in header if nume in competitie.probe.values_list('nume', flat=True)]
+        try:
+            col_nr_leg = header.index("NR LEG")
+            col_nume_si_prenume = header.index("NUME SI PRENUME")
+            col_club = header.index("CLUB")
+            col_gen = header.index("GEN")
+            col_cnp = header.index("CNP")
+            col_data_nasterii = header.index("DATA NASTERII")
+            col_cat_kg = header.index("CATEGORIE KG")
+            col_proba = header.index("PROBA")
+            col_meci_demonstrativ = header.index("MECI")
+        except ValueError as e:
+            return Response({"detail": f"Header lipsa: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
         for idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
             try:
                 if not row or all(cell is None for cell in row):
-                    errors.append(f"Rândul {idx}: rând gol")
                     continue
 
-                nume = row[0]
-                prenume = row[1]
-                cnp = row[2]
-                cat_varsta = row[3]
-                cat_greutate = row[4]
-                data_nastere = row[5]
-                club_nume = row[6]
-                sex = row[7]
+                try:
+                    nume_prenume = str(row[col_nume_si_prenume]).strip()
+                    nume, prenume = nume_prenume.split(" ", 1)
+                except Exception:
+                    continue
 
-                if not all([nume, prenume, cnp, cat_greutate, data_nastere, club_nume, sex]):
-                    raise ValueError("Date lipsă în rând")
+                nr_leg = row[col_nr_leg]
+                club_nume = row[col_club]
+                sex = row[col_gen]
+                if sex == "Masculin":
+                    sex = "M"
+                elif sex == "Feminin":
+                    sex = "F"
+                cnp = row[col_cnp]
+                data_nastere = row[col_data_nasterii]
+                cat_greutate = row[col_cat_kg]
+                proba_nume = row[col_proba]
+                meci_demonstrativ = row[col_meci_demonstrativ]
 
-                data_nastere = datetime.strptime(str(data_nastere), "%d.%m.%Y").date()
+                if not all([nr_leg, nume, prenume, club_nume, sex, cnp, data_nastere, proba_nume]):
+                    continue
+
+                try:
+                    data_nastere = datetime.strptime(str(data_nastere), "%d.%m.%Y").date()
+                except Exception:
+                    continue
+
+                if len(str(cnp)) != 13:
+                    continue
+
                 club, _ = Club.objects.get_or_create(nume=club_nume)
-
-                if not cnp or len(str(cnp)) != 13:
-                    raise ValueError("CNP invalid")
 
                 sportiv, _ = Sportiv.objects.get_or_create(cnp=cnp, defaults={
                     "nume": nume,
@@ -181,48 +228,66 @@ class UploadParticipantsView(APIView):
                     "sex": sex,
                     "club": club,
                     "data_nastere": data_nastere,
+                    "nr_legitimatie": nr_leg,
                 })
 
-                if Inscriere.objects.filter(sportiv=sportiv, competitie=competitie).exists():
+                varsta = competitie.data_incepere.year - data_nastere.year
+
+                proba_obj, _ = Proba.objects.get_or_create(nume=proba_nume)
+
+                if not Categorie.objects.filter(proba=proba_obj).exists():
+                    populate_categorii_standard(proba_obj)
+
+                # Tratament special pentru Polydamas / Palaismata
+                if any(p.lower() in proba_obj.nume.lower() for p in ["Polydamas", "Palaismata"]):
+                    categorie = Categorie.objects.filter(
+                        proba=proba_obj,
+                        varsta_min__lte=varsta,
+                        varsta_max__gte=varsta
+                    ).first()
+                else:
+                    def parse_categorie_greutate(raw_kg):
+                        try:
+                            raw_kg = str(raw_kg).strip().replace(" ", "").replace("KG", "").replace("kg", "")
+                            return raw_kg
+                        except Exception:
+                            return None
+
+                    cat_greutate = parse_categorie_greutate(cat_greutate)
+                    if cat_greutate is None:
+                        continue
+
+                    categorie = Categorie.objects.filter(
+                        proba=proba_obj,
+                        sex=sex,
+                        varsta_min__lte=varsta,
+                        varsta_max__gte=varsta,
+                        categorie_greutate=cat_greutate
+                    ).first()
+
+                if not categorie:
                     continue
 
-                varsta = competitie.data_incepere.year - data_nastere.year
-                greutate = float(cat_greutate)
-
-                for i, proba in enumerate(probe_nume):
-                    col_idx = header.index(proba)
-                    if str(row[col_idx]).strip().lower() == 'x':
-                        proba_obj, _ = Proba.objects.get_or_create(nume=proba)
-
-                        if not Categorie.objects.filter(proba=proba_obj).exists():
-                            populate_categorii_standard(proba_obj)
-
-                        categorie = Categorie.objects.filter(
-                            proba=proba_obj,
-                            sex=sex,
-                            varsta_min__lte=varsta,
-                            varsta_max__gte=varsta,
-                            greutate_min__lte=greutate,
-                            greutate_max__gte=greutate,
-                        ).first()
-
-                        if not categorie:
-                            raise ValueError(f"Nu există categorie pentru proba {proba}, varsta {varsta} și greutate {greutate}")
-
-                        Inscriere.objects.create(
-                            sportiv=sportiv,
-                            categorie=categorie,
-                            competitie=competitie,
-                            varsta=varsta,
-                            greutate=greutate
-                        )
-                        added_count += 1
+                if not Inscriere.objects.filter(
+                    sportiv=sportiv,
+                    categorie=categorie,
+                    competitie=competitie
+                ).exists():
+                    Inscriere.objects.create(
+                        sportiv=sportiv,
+                        categorie=categorie,
+                        competitie=competitie,
+                        varsta=varsta,
+                        meci_demonstrativ=meci_demonstrativ,
+                    )
+                added_count += 1
 
             except Exception as e:
-                errors.append(f"Rândul {idx}: {str(e)}")
+                print(f"Randul {idx}: {str(e)}")
 
         return Response({
-            "detail": f"{added_count} înscrieri adăugate, {len(errors)} erori",
-            "errors": errors
-        }, status=status.HTTP_207_MULTI_STATUS if errors else status.HTTP_201_CREATED)
+            "detail": f"{added_count} inscrieri adaugate",
+        }, status=status.HTTP_201_CREATED)
+
+
 
