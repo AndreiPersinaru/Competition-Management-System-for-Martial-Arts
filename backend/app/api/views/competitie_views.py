@@ -17,6 +17,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from ..serializers import CompetitieSerializer
 from ..models import Competitie, Sportiv, Club, Proba, Categorie, Inscriere
 from ..utils.categorii import populate_categorii_standard
+from ..utils.bracket_generation import genereaza_bracket_si_meciuri
 
 
 class CompetitieViewSet(viewsets.ModelViewSet):
@@ -284,6 +285,10 @@ class UploadParticipantsView(APIView):
 
             except Exception as e:
                 print(f"Randul {idx}: {str(e)}")
+
+        # Get a list of all inscrieri for the competition
+        inscrieri = Inscriere.objects.filter(competitie=competitie).select_related("sportiv", "categorie__proba", "sportiv__club")
+        genereaza_bracket_si_meciuri(inscrieri, competitie) 
 
         return Response({
             "detail": f"{added_count} inscrieri adaugate",

@@ -36,5 +36,26 @@ class CompetitieSerializer(serializers.ModelSerializer):
             competitie.probe.add(proba)
         return competitie
 
+class MeciSerializer(serializers.ModelSerializer):
+    sportiv1_nume = serializers.CharField(source='sportiv1.user.username', read_only=True)
+    sportiv2_nume = serializers.CharField(source='sportiv2.user.username', read_only=True)
+    categorie_nume = serializers.CharField(source='categorie.nume', read_only=True)
 
+    class Meta:
+        model = Meci
+        fields = '__all__'
 
+class CategorieSerializer(serializers.ModelSerializer):
+    probe = ProbaSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Categorie
+        fields = '__all__'
+
+class SportivSerializer(serializers.ModelSerializer):
+    club_nume = serializers.CharField(source='club.nume', read_only=True)
+    club_id = serializers.IntegerField(source='club.id', read_only=True)
+
+    class Meta:
+        model = Sportiv
+        fields = '__all__'

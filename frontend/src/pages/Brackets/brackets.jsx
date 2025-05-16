@@ -1,171 +1,321 @@
 import React, { useState, useEffect } from "react";
 import { Bracket, Seed, SeedItem, SeedTeam } from "react-brackets";
-import { Container, Box, Typography, FormControl, InputLabel, Select, MenuItem, Paper } from "@mui/material";
-import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import { Select, MenuItem, FormControl, InputLabel, Box, Typography, Grid } from "@mui/material";
+import axios from "axios";
 
 const CustomSeed = ({ seed, breakpoint }) => {
     return (
         <Seed mobileBreakpoint={breakpoint}>
-            <SeedItem style={{ width: "200px" }} onClick={() => console.log("Seed clicked", seed.id)}>
-                <div
-                    style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        width: "100%",
-                        border: "1px solid #ccc",
-                        borderRadius: "4px",
-                        overflow: "hidden",
-                    }}
-                >
+            <SeedItem>
+                <Box>
                     <SeedTeam
                         style={{
-                            padding: "8px",
-                            backgroundColor: seed.teams[0]?.winner ? "#e3f2fd" : "white",
-                            fontWeight: seed.teams[0]?.winner ? "bold" : "normal",
-                            borderBottom: "1px solid #ccc",
+                            color: "black",
+                            backgroundColor: "#f8f9fa",
+                            width: "300px",
+                            height: "50px",
+                            fontSize: "18px",
+                            fontWeight: "bold",
+                            border: "1px solid black",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "0 15px",
                         }}
                     >
-                        {seed.teams[0]?.name === "BYE" ? "BYE" : seed.teams[0]?.name || "TBD"}
-                        {seed.teams[0]?.score !== undefined && <span style={{ float: "right", fontWeight: "bold" }}>{seed.teams[0]?.score}</span>}
+                        {seed.teams[0]?.name || "-------"}
+                        <span style={{ fontSize: "24px" }}>{seed.teams[0]?.score ?? ""}</span>
                     </SeedTeam>
                     <SeedTeam
                         style={{
-                            padding: "8px",
-                            backgroundColor: seed.teams[1]?.winner ? "#e3f2fd" : "white",
-                            fontWeight: seed.teams[1]?.winner ? "bold" : "normal",
+                            color: "white",
+                            backgroundColor: "#1a53ff",
+                            width: "300px",
+                            height: "50px",
+                            fontSize: "18px",
+                            fontWeight: "bold",
+                            border: "1px solid black",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "0 15px",
                         }}
                     >
-                        {seed.teams[1]?.name === "BYE" ? "BYE" : seed.teams[1]?.name || "TBD"}
-                        {seed.teams[1]?.score !== undefined && <span style={{ float: "right", fontWeight: "bold" }}>{seed.teams[1]?.score}</span>}
+                        {seed.teams[1]?.name || "-------"}
+                        <span style={{ fontSize: "24px" }}>{seed.teams[1]?.score ?? ""}</span>
                     </SeedTeam>
-                </div>
+                </Box>
             </SeedItem>
         </Seed>
     );
 };
 
-const CustomTitle = ({ title }) => {
-    return (
-        <div
-            style={{
-                textAlign: "center",
-                fontWeight: "bold",
-                padding: "10px",
-                color: "#1976d2",
-            }}
-        >
-            {title}
-        </div>
-    );
-};
+const BracketPage = () => {
+    const apiClient = axios.create({ timeout: 5000, headers: { "Content-Type": "application/json" } });
 
-const generateParticipants = (count) => {
-    const firstNames = ["Andrei", "Mihai", "Cristian", "Alexandru", "Gabriel", "Razvan", "Vlad", "Bogdan", "Radu", "Catalin"];
-    const lastNames = ["Popescu", "Ionescu", "Dumitru", "Stanciu", "Radulescu", "Neagu", "Marin", "Tudor", "Dobre", "Florescu"];
+    const [bracketData, setBracketData] = useState([]);
+    const [filteredData, setFilteredData] = useState([]);
+    const [participants, setParticipants] = useState(0);
+    const [categories, setCategories] = useState([]);
+    const [sex, setSex] = useState("");
+    const [age, setAge] = useState("");
+    const [selectedCategoryId, setSelectedCategoryId] = useState("");
+    const [probes, setProbes] = useState([]);
 
-    return Array.from({ length: count }, (_, i) => ({
-        id: i + 1,
-        name: `${firstNames[i % 10]} ${lastNames[i % 10]}`,
-        country: ["ROU", "FRA", "ITA", "ESP", "GER"][i % 5],
-    }));
-};
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [meciuriRes, sportiviRes, categoriiRes] = await Promise.all([
+                    apiClient.get("http://127.0.1:8000/api/meciuri/"),
+                    apiClient.get("http://127.0.1:8000/api/sportivi/"),
+                    apiClient.get("http://127.0.1:8000/api/categorii/"),
+                ]);
 
-const generateBracket = (participants) => {
-    let rounds = [];
-    let currentParticipants = participants.map((p) => ({ ...p }));
-    let matchId = 1;
+                const meciuri = meciuriRes.data;
+                const sportiviMap = {};
+                sportiviRes.data.forEach((s) => {
+                    sportiviMap[s.id] = `${s.nume} ${s.prenume} (${s.club_nume})`;
+                });
 
-    while (currentParticipants.length > 1) {
-        const roundNumber = rounds.length + 1;
-        const roundTitle = roundNumber === 1 ? "Runda 1" : roundNumber === 2 ? "Sferturi" : roundNumber === 3 ? "Semifinale" : roundNumber === 4 ? "Finala" : `Runda ${roundNumber}`;
+                const categoriiMap = {};
+                categoriiRes.data.forEach((cat) => {
+                    categoriiMap[cat.id] = {
+                        probaId: cat.proba,
+                        sex: cat.sex,
+                        varsta_min: cat.varsta_min,
+                        varsta_max: cat.varsta_max,
+                    };
+                });
 
-        const round = {
-            title: roundTitle,
-            seeds: [],
+                const categorySet = new Set();
+                const probaIds = new Set();
+
+                meciuri.forEach((m) => {
+                    const c = categoriiMap[m.categorie];
+                    if (c) {
+                        categorySet.add(`${m.categorie}-${c.sex}-${c.probaId}-${c.varsta_min}-${c.varsta_max}`);
+                        probaIds.add(c.probaId);
+                    }
+                });
+
+                const probeRes = await Promise.all(Array.from(probaIds).map((id) => apiClient.get(`http://127.0.1:8000/api/probe/${id}/`)));
+                const probaMap = {};
+                probeRes.forEach((res) => {
+                    probaMap[res.data.id] = res.data.nume;
+                });
+
+                const uniqueCategories = Array.from(categorySet).map((item) => {
+                    const [categorie, sex, probaId, varsta_min, varsta_max] = item.split("-");
+                    return {
+                        categorie,
+                        sex,
+                        probaId,
+                        varsta_min,
+                        varsta_max,
+                        proba: probaMap[parseInt(probaId)],
+                    };
+                });
+
+                setBracketData(
+                    meciuri.map((m) => ({
+                        ...m,
+                        sex: categoriiMap[m.categorie]?.sex,
+                        varsta: `${categoriiMap[m.categorie]?.varsta_min}-${categoriiMap[m.categorie]?.varsta_max}`,
+                        sportiv1_nume: sportiviMap[m.sportiv1],
+                        sportiv2_nume: sportiviMap[m.sportiv2],
+                    }))
+                );
+
+                setCategories(uniqueCategories);
+                setProbes(Object.entries(probaMap).map(([id, nume]) => ({ id: parseInt(id), nume })));
+            } catch (error) {
+                console.error("Eroare la fetch:", error);
+            }
         };
 
-        const numMatches = Math.floor(currentParticipants.length / 2);
-        const byes = currentParticipants.length % 2;
+        fetchData();
+    }, []);
 
-        // Create matches
-        for (let i = 0; i < numMatches; i++) {
-            const team1 = currentParticipants[i * 2];
-            const team2 = currentParticipants[i * 2 + 1];
-            round.seeds.push({
-                id: matchId++,
-                teams: [team1 || { name: "BYE" }, team2 || { name: "BYE" }],
+    useEffect(() => {
+        if (selectedCategoryId && sex && age) {
+            const filtered = bracketData.filter((m) => m.sex == sex && m.varsta == age && categories.find((c) => c.probaId == selectedCategoryId && c.categorie == m.categorie));
+            setFilteredData(filtered);
+
+            const ids = new Set();
+            filtered.forEach((m) => {
+                if (m.sportiv1) ids.add(m.sportiv1);
+                if (m.sportiv2) ids.add(m.sportiv2);
             });
+            setParticipants(ids.size);
+        } else {
+            setFilteredData([]);
+            setParticipants(0);
+        }
+    }, [selectedCategoryId, sex, age, bracketData, categories]);
+
+    const buildBracketStructure = (participantsCount, matches) => {
+        const matchMap = Object.fromEntries(matches.map((m) => [m.id, m]));
+        const matchIds = matches.map((m) => m.id).sort((a, b) => a - b);
+        let index = 0;
+
+        const getMatch = () => {
+            const match = matchMap[matchIds[index]];
+            index++;
+            return (
+                match || {
+                    id: matchIds[index - 1] || `new-${index}`,
+                    teams: [
+                        { name: "-------", score: "" },
+                        { name: "-------", score: "" },
+                    ],
+                }
+            );
+        };
+
+        if (participantsCount === 2) {
+            return [
+                { title: "Meci 1", seeds: [getMatch()] },
+                { title: "Meci 2", seeds: [getMatch()] },
+                { title: "Meci 3", seeds: [getMatch()] },
+            ];
         }
 
-        // Prepare next round participants
-        const nextParticipants = [];
-        for (let i = 0; i < numMatches; i++) {
-            nextParticipants.push({ name: `Câștigător M${matchId - numMatches + i}` });
-        }
-        // Add byes
-        for (let i = 0; i < byes; i++) {
-            const byeParticipant = currentParticipants[numMatches * 2 + i];
-            if (byeParticipant) nextParticipants.push(byeParticipant);
+        if (participantsCount === 3) {
+            return [
+                { title: "Meci 1", seeds: [getMatch()] },
+                { title: "Meci 2", seeds: [getMatch()] },
+                { title: "Meci 3", seeds: [getMatch()] },
+            ];
         }
 
-        rounds.push(round);
-        currentParticipants = nextParticipants;
-    }
+        if (participantsCount === 4) {
+            return {
+                main: [
+                    { title: "Semifinale", seeds: [getMatch(), getMatch()] },
+                    { title: "Finala", seeds: [getMatch()] },
+                ],
+                loser: [{ title: "Locul 3", seeds: [getMatch()] }],
+            };
+        }
 
-    return rounds;
-};
+        if (participantsCount > 4 && participantsCount <= 8) {
+            return {
+                main: [
+                    {
+                        title: "Sferturi",
+                        seeds: [getMatch(), getMatch(), getMatch(), getMatch()],
+                    },
+                    {
+                        title: "Semifinale",
+                        seeds: [getMatch(), getMatch()],
+                    },
+                    {
+                        title: "Finala",
+                        seeds: [getMatch()],
+                    },
+                ],
+                loser: [
+                    {
+                        title: "Runda 1 Pierzatori",
+                        seeds: [getMatch(), getMatch()],
+                    },
+                    {
+                        title: "Runda 2 Pierzatori",
+                        seeds: [getMatch(), getMatch()],
+                    },
+                    {
+                        title: "Locul 3",
+                        seeds: [getMatch()],
+                    },
+                ],
+            };
+        }
 
-const TournamentBrackets = () => {
-    const [participantCount, setParticipantCount] = useState(8);
-    const [participants, setParticipants] = useState([]);
-    const [brackets, setBrackets] = useState([]);
+        return null;
+    };
 
-    useEffect(() => {
-        setParticipants(generateParticipants(participantCount));
-    }, [participantCount]);
+    const renderBracket = () => {
+        const matchData = filteredData.map((m) => ({
+            id: m.id,
+            teams: [
+                { name: m.sportiv1_nume || "-------", score: m.scor1 },
+                { name: m.sportiv2_nume || "-------", score: m.scor2 },
+            ],
+        }));
 
-    useEffect(() => {
-        if (participants.length === 0) return;
-        setBrackets(generateBracket(participants));
-    }, [participants]);
+        const structure = buildBracketStructure(participants, matchData);
 
-    const handleCountChange = (event) => {
-        setParticipantCount(event.target.value);
+        if (participants === 2 || participants === 3) {
+            return <Bracket rounds={structure} renderSeedComponent={CustomSeed} />;
+        }
+
+        if (participants > 3 && participants <= 8) {
+            return (
+                <Box display="flex" flexDirection="column" gap={5}>
+                    <Box>
+                        <Typography variant="h6">Main Bracket</Typography>
+                        <Bracket rounds={structure.main} renderSeedComponent={CustomSeed} />
+                    </Box>
+                    <Box>
+                        <Typography variant="h6">Loser Bracket</Typography>
+                        <Bracket rounds={structure.loser} renderSeedComponent={CustomSeed} />
+                    </Box>
+                </Box>
+            );
+        }
+
+        return null;
     };
 
     return (
-        <Container maxWidth="xl">
-            <Box sx={{ my: 4, textAlign: "center" }}>
-                <Typography variant="h4" component="h1" gutterBottom>
-                    <EmojiEventsIcon sx={{ mr: 1, verticalAlign: "middle" }} />
-                    Tournament Brackets
-                </Typography>
+        <Box p={3}>
+            <Grid container spacing={2}>
+                <Grid item xs={12} md={4}>
+                    <FormControl fullWidth>
+                        <InputLabel>Probă</InputLabel>
+                        <Select value={selectedCategoryId || ""} label="Categorie" onChange={(e) => setSelectedCategoryId(e.target.value)}>
+                            {probes.map((proba) => (
+                                <MenuItem key={proba.id} value={proba.id}>
+                                    {proba.nume}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                    <FormControl fullWidth>
+                        <InputLabel>Gen</InputLabel>
+                        <Select value={sex} label="Gen" onChange={(e) => setSex(e.target.value)}>
+                            <MenuItem value="M">Masculin</MenuItem>
+                            <MenuItem value="F">Feminin</MenuItem>
+                        </Select>
+                    </FormControl>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                    <FormControl fullWidth>
+                        <InputLabel>Vârstă</InputLabel>
+                        <Select value={age} label="Vârstă" onChange={(e) => setAge(e.target.value)}>
+                            {Array.from(new Set(categories.filter((c) => c.sex === sex && c.probaId == selectedCategoryId).map((c) => `${c.varsta_min}-${c.varsta_max}`))).map((v) => (
+                                <MenuItem key={v} value={v}>
+                                    {v}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </Grid>
+            </Grid>
 
-                <FormControl sx={{ m: 1, minWidth: 200 }}>
-                    <InputLabel id="participant-count-label">Participanți</InputLabel>
-                    <Select labelId="participant-count-label" value={participantCount} onChange={handleCountChange} label="Participanți">
-                        {Array.from({ length: 9 }, (_, i) => i + 2).map((num) => (
-                            <MenuItem key={num} value={num}>
-                                {num} Participanți
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
+            <Box mt={4}>
+                {filteredData.length > 0 ? (
+                    renderBracket()
+                ) : (
+                    <Typography variant="h6" align="center" mt={5}>
+                        Selectează sexul, vârsta și categoria pentru a vizualiza bracketul.
+                    </Typography>
+                )}
             </Box>
-
-            <Paper elevation={3} sx={{ p: 2, overflowX: "auto", mb: 4 }}>
-                <Box sx={{ display: "flex", justifyContent: "center" }}>
-                    <Bracket rounds={brackets}  roundTitleComponent={CustomTitle} swipeableProps={{ enableMouseEvents: true }} mobileBreakpoint={760} />
-                </Box>
-            </Paper>
-
-            <Box sx={{ mt: 4 }}>
-                <Typography variant="body2" color="text.secondary" align="center">
-                    Lista participanți: {participants.map((p) => p.name).join(", ")}
-                </Typography>
-            </Box>
-        </Container>
+        </Box>
     );
 };
 
-export default TournamentBrackets;
+export default BracketPage;

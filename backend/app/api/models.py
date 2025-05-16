@@ -79,16 +79,21 @@ class Saltea(models.Model):
 class Meci(models.Model):
     competitie = models.ForeignKey(Competitie, on_delete=models.CASCADE, related_name='meciuri')
     categorie = models.ForeignKey(Categorie, on_delete=models.CASCADE)
-    sportiv1 = models.ForeignKey(Sportiv, on_delete=models.CASCADE, related_name='meciuri_ca_sportiv1')
-    sportiv2 = models.ForeignKey(Sportiv, on_delete=models.CASCADE, related_name='meciuri_ca_sportiv2')
-    saltea = models.ForeignKey(Saltea, on_delete=models.SET_NULL, null=True)
+    sportiv1 = models.ForeignKey(Sportiv, on_delete=models.SET_NULL, null=True, blank=True, related_name='meciuri_ca_sportiv1')
+    sportiv2 = models.ForeignKey(Sportiv, on_delete=models.SET_NULL, null=True, blank=True, related_name='meciuri_ca_sportiv2')
     castigator = models.ForeignKey(Sportiv, on_delete=models.SET_NULL, null=True, blank=True, related_name='meciuri_castigate')
     scor1 = models.IntegerField(default=0)
     scor2 = models.IntegerField(default=0)
     diferenta_activata = models.BooleanField(default=False)
+    runda = models.CharField(max_length=50)
+    pozitie_in_bracket = models.IntegerField()
+    pozitie_in_runda = models.IntegerField()
+    next_meci = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='meciuri_precedente')
+    saltea = models.ForeignKey(Saltea, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
-        return f"{self.sportiv1} vs {self.sportiv2}"
+        return f"{self.runda} - {self.sportiv1 or '__'} vs {self.sportiv2 or '__'}"
+
 
 class ClasamentClub(models.Model):
     competitie = models.ForeignKey(Competitie, on_delete=models.CASCADE)
