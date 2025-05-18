@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { Box, Button, Typography, IconButton, Switch, Paper, Divider } from "@mui/material";
 import Grid from "@mui/material/Grid2";
-import { Add, Remove, Pause, PlayArrow } from "@mui/icons-material";
+import { Pause, PlayArrow } from "@mui/icons-material";
+import { useLocation } from "react-router-dom";
 
 import Navbar from "../../components/sections/Navbar/navbar";
 
@@ -11,19 +12,21 @@ const MatchDashboard = () => {
     const [score, setScore] = useState([0, 0]);
     const [penalties, setPenalties] = useState([0, 0]);
     const [diffWin, setDiffWin] = useState(false);
+    const location = useLocation();
+    const [metadata, setMetadata] = useState(null);
+
+    useEffect(() => {
+        if (location.state) {
+            console.log("Meci primit:", location.state);
+            setMetadata(location.state);
+        }
+    }, [location.state]);
 
     // Culorile pentru sportivi
     const blueColor = "#198dd2";
     const whiteColor = "#ffffff";
     const blueBorderColor = "#0b5d8f";
     const whiteBorderColor = "#cccccc";
-
-    // Exemplu de metadate (înlocuiește cu API call în viitor)
-    const [metadata, setMetadata] = useState({
-        playerNames: ["Persinaru A.", "Chirperean E."],
-        clubs: ["Shin Daito", "Davidans"],
-        category: "-77kg",
-    });
 
     const channel = useRef(new BroadcastChannel("match_channel"));
     const timerRef = useRef(null);
@@ -168,6 +171,17 @@ const MatchDashboard = () => {
         }, 500);
     };
 
+    if (!metadata || !metadata.teams) {
+        return (
+            <>
+                <Navbar />
+                <Box height={"calc(100vh - 4.5rem)"} mt={"4.5rem"} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Typography variant="h6">Loading match data...</Typography>
+                </Box>
+            </>
+        );
+    }
+
     return (
         <>
             <Navbar />
@@ -178,8 +192,11 @@ const MatchDashboard = () => {
                     </Typography>
 
                     <Grid container spacing={2} justifyContent="center" sx={{ mt: 2 }}>
-                        <Grid>
-                            <Button variant="outlined" startIcon={<Remove />} onClick={() => handleRemoveTime(30)} size="large">
+                        <Grid container spacing={2} justifyContent="center">
+                            <Button variant="outlined" onClick={() => handleRemoveTime(60)} sx={{ fontSize: "1.2rem" }}>
+                                -60s
+                            </Button>
+                            <Button variant="outlined" onClick={() => handleRemoveTime(30)} sx={{ fontSize: "1.2rem" }}>
                                 -30s
                             </Button>
                         </Grid>
@@ -188,9 +205,12 @@ const MatchDashboard = () => {
                                 {running ? <Pause fontSize="inherit" /> : <PlayArrow fontSize="inherit" />}
                             </IconButton>
                         </Grid>
-                        <Grid>
-                            <Button variant="outlined" startIcon={<Add />} onClick={() => handleAddTime(30)} size="large">
+                        <Grid container spacing={2} justifyContent="center">
+                            <Button variant="outlined" onClick={() => handleAddTime(30)} sx={{ fontSize: "1.2rem" }}>
                                 +30s
+                            </Button>
+                            <Button variant="outlined" onClick={() => handleAddTime(60)} sx={{ fontSize: "1.2rem" }}>
+                                +60s
                             </Button>
                         </Grid>
                     </Grid>
@@ -219,7 +239,7 @@ const MatchDashboard = () => {
                                 >
                                     <Box sx={{ transform: player === 1 ? "scaleX(-1)" : "none" }}>
                                         <Typography variant="h5" mb={2}>
-                                            {metadata.playerNames[player]} ({metadata.clubs[player]})
+                                            {metadata.teams[player]?.name || `Player ${player + 1}`}
                                         </Typography>
 
                                         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
