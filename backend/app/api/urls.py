@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views.auth_views import RegisterView, LogoutView
-from .views.competitie_views import CompetitieViewSet, CompetitionExcelTemplateView, UploadParticipantsView, ExportParticipantsView
+from .views.competitie_views import CompetitieViewSet, CompetitionExcelTemplateView, UploadParticipantsView, ExportParticipantsView, DownloadRankingView
 from .views.meci_views import MeciViewSet
 from .views.categorie_views import CategorieViewSet
 from .views.sportiv_views import SportivViewSet
@@ -28,5 +28,6 @@ urlpatterns = [
     path("competitii/<int:competition_id>/template/", CompetitionExcelTemplateView.as_view(), name="download_excel_template"),
     path("competitii/<int:competition_id>/export-participants/", ExportParticipantsView.as_view(), name="export_participants"),
     path("competitii/<int:competition_id>/upload-participants/", UploadParticipantsView.as_view()),
+    path("competitii/<int:competition_id>/ranking/download/", DownloadRankingView.as_view(), name="download_ranking"),
 
 ]

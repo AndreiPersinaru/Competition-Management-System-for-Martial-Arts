@@ -15,10 +15,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from ..serializers import CompetitieSerializer
-from ..models import Competitie, Sportiv, Club, Proba, Categorie, Inscriere
+from ..models import Competitie, Sportiv, Club, Proba, Categorie, Inscriere, ClasamentProba, ClasamentClub
 from ..utils.categorii import populate_categorii_standard
 from ..utils.bracket_generation import genereaza_bracket_si_meciuri
-
+from ..utils.clasament_club import actualizeaza_clasament_cluburi_pentru_competitie
 
 class CompetitieViewSet(viewsets.ModelViewSet):
     queryset = Competitie.objects.all()
@@ -294,5 +294,171 @@ class UploadParticipantsView(APIView):
             "detail": f"{added_count} inscrieri adaugate",
         }, status=status.HTTP_201_CREATED)
 
+# ========== DOWNLOAD RANKING EXCEL ==========
 
+class DownloadRankingView(APIView):
+    permission_classes = []
 
+    def get(self, request, competition_id):
+        competitie = get_object_or_404(Competitie, id=competition_id)
+        
+        actualizeaza_clasament_cluburi_pentru_competitie(competitie)
+        
+        # Obținem toate clasamentele pentru această competiție
+        clasamente = ClasamentProba.objects.filter(
+            competitie=competitie
+        ).select_related(
+            'sportiv', 'sportiv__club', 'categorie', 'categorie__proba'
+        ).order_by('categorie__proba__nume', 'categorie__sex', 'categorie__categorie_greutate', 'puncte')
+
+        # Obținem clasamentul cluburilor
+        clasament_cluburi = ClasamentClub.objects.filter(
+            competitie=competitie
+        ).select_related('club').order_by('-puncte')
+
+        wb = Workbook()
+        
+        # ============= SHEET 1: CLASAMENT SPORTIVI =============
+        ws_sportivi = wb.active
+        ws_sportivi.title = "Clasament Sportivi"
+
+        # Headers pentru Excel
+        headers_sportivi = ["LOCUL", "NUME SI PRENUME", "PROBA", "GEN", "CATEGORIE KG", "CATEGORIE VARSTA", "CLUB"]
+        ws_sportivi.append(headers_sportivi)
+
+        # Styling pentru headers și rânduri
+        for i, header in enumerate(headers_sportivi, start=1):
+            col_letter = get_column_letter(i)
+            ws_sportivi.column_dimensions[col_letter].width = len(header) + 10
+            
+            # Styling pentru toate rândurile (inclusiv header)
+            for row in range(1, 1001):
+                cell = ws_sportivi[f"{col_letter}{row}"]
+                cell.font = openpyxl.styles.Font(bold=True, name="Calibri")
+                ws_sportivi.row_dimensions[row].height = 25
+                cell.border = openpyxl.styles.Border(
+                    left=openpyxl.styles.Side(style='thin'),
+                    right=openpyxl.styles.Side(style='thin'),
+                    top=openpyxl.styles.Side(style='thin'),
+                    bottom=openpyxl.styles.Side(style='thin')
+                )
+
+        # Grupăm clasamentele pe categorii pentru a genera locuri corecte
+        categorii_clasamente = {}
+        for clasament in clasamente:
+            categorie_key = (
+                clasament.categorie.proba.nume,
+                clasament.categorie.sex,
+                clasament.categorie.categorie_greutate or '',
+                f"{clasament.categorie.varsta_min}-{clasament.categorie.varsta_max}"
+            )
+            
+            if categorie_key not in categorii_clasamente:
+                categorii_clasamente[categorie_key] = []
+            categorii_clasamente[categorie_key].append(clasament)
+
+        row_num = 2
+        
+        # Pentru fiecare categorie, sortăm și atribuim locurile
+        for categorie_key, clasamente_categorie in categorii_clasamente.items():
+            # Sortăm după puncte (locul în clasament)
+            clasamente_categorie.sort(key=lambda x: x.puncte)
+            
+            # Adăugăm rând gol între categorii (cu excepția primei)
+            if row_num > 2:
+                row_num += 1
+            
+            # Pentru fiecare sportiv din categorie
+            for loc, clasament in enumerate(clasamente_categorie, 1):
+                sportiv = clasament.sportiv
+                categorie = clasament.categorie
+                
+                # Determinăm genul pentru afișare
+                gen_display = "Masculin" if categorie.sex == "M" else "Feminin"
+                
+                # Determinăm categoria de greutate
+                cat_kg_display = f"{categorie.categorie_greutate} KG" if categorie.categorie_greutate else "N/A"
+                
+                values = [
+                    loc,  # Locul în categorie
+                    f"{sportiv.nume} {sportiv.prenume}",
+                    categorie.proba.nume,
+                    gen_display,
+                    cat_kg_display,
+                    f"{categorie.varsta_min}-{categorie.varsta_max}",
+                    sportiv.club.nume if sportiv.club else ""
+                ]
+                
+                # Adăugăm valorile în Excel
+                for col_num, value in enumerate(values, start=1):
+                    cell = ws_sportivi.cell(row=row_num, column=col_num)
+                    cell.value = value
+                    
+                    # Font diferit pentru rândurile cu date (nu bold)
+                    cell.font = openpyxl.styles.Font(bold=False, name="Calibri")
+                
+                row_num += 1
+
+        # Dacă nu avem clasamente, adăugăm un mesaj
+        if not clasamente:
+            ws_sportivi.cell(row=2, column=1).value = "Nu există clasamente disponibile pentru această competiție"
+            ws_sportivi.cell(row=2, column=1).font = openpyxl.styles.Font(italic=True, name="Calibri")
+
+        # ============= SHEET 2: CLASAMENT CLUBURI =============
+        ws_cluburi = wb.create_sheet(title="Clasament Cluburi")
+
+        # Headers pentru clasamentul cluburilor
+        headers_cluburi = ["LOCUL", "CLUB", "PUNCTE"]
+        ws_cluburi.append(headers_cluburi)
+
+        # Styling pentru headers și rânduri cluburi
+        for i, header in enumerate(headers_cluburi, start=1):
+            col_letter = get_column_letter(i)
+            ws_cluburi.column_dimensions[col_letter].width = len(header) + 15
+            
+            # Styling pentru toate rândurile (inclusiv header)
+            for row in range(1, 101):  # Reducem numărul de rânduri pre-stilizate pentru sheet-ul de cluburi
+                cell = ws_cluburi[f"{col_letter}{row}"]
+                cell.font = openpyxl.styles.Font(bold=True, name="Calibri")
+                ws_cluburi.row_dimensions[row].height = 25
+                cell.border = openpyxl.styles.Border(
+                    left=openpyxl.styles.Side(style='thin'),
+                    right=openpyxl.styles.Side(style='thin'),
+                    top=openpyxl.styles.Side(style='thin'),
+                    bottom=openpyxl.styles.Side(style='thin')
+                )
+
+        # Adăugăm datele pentru clasamentul cluburilor
+        row_num_cluburi = 2
+        for loc, clasament_club in enumerate(clasament_cluburi, 1):
+            values_cluburi = [
+                loc,  # Locul în clasament
+                clasament_club.club.nume,
+                clasament_club.puncte,
+            ]
+            
+            # Adăugăm valorile în Excel
+            for col_num, value in enumerate(values_cluburi, start=1):
+                cell = ws_cluburi.cell(row=row_num_cluburi, column=col_num)
+                cell.value = value
+                
+                # Font diferit pentru rândurile cu date (nu bold)
+                cell.font = openpyxl.styles.Font(bold=False, name="Calibri")
+            
+            row_num_cluburi += 1
+
+        # Dacă nu avem clasamente de cluburi, adăugăm un mesaj
+        if not clasament_cluburi:
+            ws_cluburi.cell(row=2, column=1).value = "Nu există clasamente de cluburi disponibile pentru această competiție"
+            ws_cluburi.cell(row=2, column=1).font = openpyxl.styles.Font(italic=True, name="Calibri")
+
+        # Pregătim răspunsul HTTP
+        response = HttpResponse(
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        filename = f"Clasament Complet {competitie.nume}.xlsx"
+        response["Content-Disposition"] = f"attachment; filename*=UTF-8''{quote(filename)}"
+        
+        # Salvăm workbook-ul în răspuns
+        wb.save(response)
+        return response

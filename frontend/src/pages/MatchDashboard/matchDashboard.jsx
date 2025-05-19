@@ -1,24 +1,42 @@
 import { useEffect, useState, useRef } from "react";
-import { Box, Button, Typography, IconButton, Switch, Paper, Divider } from "@mui/material";
+import { Box, Button, Typography, IconButton, Switch, Paper, Divider, Alert } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { Pause, PlayArrow } from "@mui/icons-material";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import axios from "axios";
 
 import Navbar from "../../components/sections/Navbar/navbar";
 
 const MatchDashboard = () => {
-    const [time, setTime] = useState(300);
+    const [time, setTime] = useState(0);
     const [running, setRunning] = useState(false);
     const [score, setScore] = useState([0, 0]);
     const [penalties, setPenalties] = useState([0, 0]);
     const [diffWin, setDiffWin] = useState(false);
     const location = useLocation();
+    const navigate = useNavigate();
     const [metadata, setMetadata] = useState(null);
+    const [isFinalizingMatch, setIsFinalizingMatch] = useState(false);
+    const [error, setError] = useState(null);
+
+    const getTimeByAge = (age) => {
+        if (age <= 11) return 120;
+        if (age <= 14) return 180;
+        if (age <= 17) return 240;
+        return 300;
+    };
 
     useEffect(() => {
         if (location.state) {
-            console.log("Meci primit:", location.state);
-            setMetadata(location.state);
+            const matchData = location.state;
+            setMetadata(matchData);
+            console.log("Match data:", matchData);
+
+            if (matchData.varsta) {
+                const age = parseInt(matchData.varsta);
+                const initialTime = getTimeByAge(age);
+                setTime(initialTime);
+            }
         }
     }, [location.state]);
 
@@ -48,12 +66,15 @@ const MatchDashboard = () => {
             timerRef.current = setInterval(() => {
                 setTime((t) => {
                     const newTime = t - 1;
+                    if (newTime <= 0) {
+                        setRunning(false);
+                    }
                     channel.current.postMessage({
                         type: "update",
                         score: scoreRef.current,
                         penalties: penaltiesRef.current,
                         time: newTime,
-                        running: true,
+                        running: newTime > 0,
                         metadata,
                     });
                     return newTime;
@@ -171,11 +192,96 @@ const MatchDashboard = () => {
         }, 500);
     };
 
+    const handleFinalizeMeci = async () => {
+        if (!metadata || !metadata.id) {
+            setError("Nu s-au găsit datele meciului pentru finalizare");
+            return;
+        }
+
+        setIsFinalizingMatch(true);
+        setError(null);
+
+        try {
+            let finalScore1 = score[0];
+            let finalScore2 = score[1];
+            let castigatorId = null;
+
+            if (penalties[0] >= 4) {
+                finalScore1 = 0;
+                finalScore2 = 99;
+                castigatorId = metadata.teams[1]?.idSportiv;
+            } else if (penalties[1] >= 4) {
+                finalScore1 = 99;
+                finalScore2 = 0;
+                castigatorId = metadata.teams[0]?.idSportiv;
+            } else {
+                if (finalScore1 > finalScore2) {
+                    castigatorId = metadata.teams[0]?.idSportiv;
+                } else if (finalScore2 > finalScore1) {
+                    castigatorId = metadata.teams[1]?.idSportiv;
+                }
+            }
+
+            const requestPayload = {
+                scor1: finalScore1,
+                scor2: finalScore2,
+                castigator: castigatorId,
+                diferenta_activata: diffWin,
+            };
+
+            console.log("Request payload:", requestPayload);
+
+            const token = localStorage.getItem("access_token");
+
+            const response = await axios.patch(`http://127.0.1:8000/api/meciuri/${metadata.id}/finalizare/`, requestPayload, {
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const result = response.data;
+
+            navigate(metadata.returnTo, {
+                state: {
+                    message: "Meciul a fost finalizat cu succes!",
+                    nextMatch: result.nextMatch || null,
+                },
+            });
+        } catch (error) {
+            console.error("Eroare la finalizarea meciului:", error);
+            setError(error.message || "A apărut o eroare la finalizarea meciului");
+        } finally {
+            setIsFinalizingMatch(false);
+        }
+    };
+
+    // Verificăm dacă meciul poate fi finalizat
+    const canFinalize = () => {
+        // Meciul poate fi finalizat dacă:
+        // 1. Cineva are 4 penalizări (descalificare)
+        // 2. Timpul s-a terminat
+        // 3. Diferența de 10 puncte este activată și cineva are cu 10+ puncte mai mult
+        const hasDisqualification = penalties[0] >= 4 || penalties[1] >= 4;
+        const timeIsUp = time <= 0;
+        const has10PointDiff = diffWin && Math.abs(score[0] - score[1]) >= 10;
+
+        return hasDisqualification || timeIsUp || has10PointDiff;
+    };
+
+    const getFinalizationReason = () => {
+        if (penalties[0] >= 4) return `${metadata?.teams[0]?.name || "Sportivul 1"} a fost descalificat (4 penalizări)`;
+        if (penalties[1] >= 4) return `${metadata?.teams[1]?.name || "Sportivul 2"} a fost descalificat (4 penalizări)`;
+        if (time <= 0) return "Timpul s-a terminat";
+        if (diffWin && Math.abs(score[0] - score[1]) >= 10) return "Diferență de 10 puncte atinsă";
+        return "";
+    };
+
     if (!metadata || !metadata.teams) {
         return (
             <>
                 <Navbar />
-                <Box height={"calc(100vh - 4.5rem)"} mt={"4.5rem"} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Box height={"calc(100vh - 4.5rem)"} mt={"4.5rem"} sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <Typography variant="h6">Loading match data...</Typography>
                 </Box>
             </>
@@ -186,6 +292,18 @@ const MatchDashboard = () => {
         <>
             <Navbar />
             <Box height={"calc(100vh - 4.5rem)"} mt={"4.5rem"}>
+                {error && (
+                    <Box sx={{ mb: 2 }}>
+                        <Alert severity="error">{error}</Alert>
+                    </Box>
+                )}
+
+                {canFinalize() && (
+                    <Box sx={{ mb: 2 }}>
+                        <Alert severity="warning">Meciul poate fi finalizat: {getFinalizationReason()}</Alert>
+                    </Box>
+                )}
+
                 <Box sx={{ textAlign: "center", mb: 6 }}>
                     <Typography variant="h1" py={2}>
                         {formatTime(time)}
@@ -222,6 +340,7 @@ const MatchDashboard = () => {
                         const bgColor = isBlue ? blueColor : whiteColor;
                         const borderColor = isBlue ? blueBorderColor : whiteBorderColor;
                         const textColor = isBlue ? "white" : "black";
+                        const isDisqualified = penalties[player] >= 4;
 
                         return (
                             <Grid key={player} xs={12} md={5}>
@@ -230,16 +349,22 @@ const MatchDashboard = () => {
                                     sx={{
                                         p: 5,
                                         minWidth: 520,
-                                        backgroundColor: bgColor,
-                                        color: textColor,
-                                        border: `3px solid ${borderColor}`,
+                                        backgroundColor: isDisqualified ? "#ffebee" : bgColor,
+                                        color: isDisqualified ? "#d32f2f" : textColor,
+                                        border: `3px solid ${isDisqualified ? "#f44336" : borderColor}`,
                                         borderRadius: 2,
                                         transform: player === 1 ? "scaleX(-1)" : "none",
+                                        opacity: isDisqualified ? 0.7 : 1,
                                     }}
                                 >
                                     <Box sx={{ transform: player === 1 ? "scaleX(-1)" : "none" }}>
                                         <Typography variant="h5" mb={2}>
                                             {metadata.teams[player]?.name || `Player ${player + 1}`}
+                                            {isDisqualified && (
+                                                <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                                                    DESCALIFICAT
+                                                </Typography>
+                                            )}
                                         </Typography>
 
                                         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
@@ -252,6 +377,7 @@ const MatchDashboard = () => {
                                                         key={val}
                                                         variant="contained"
                                                         onClick={() => handleAddScore(player, val)}
+                                                        disabled={isDisqualified}
                                                         sx={{
                                                             minWidth: 40,
                                                             bgcolor: isBlue ? "#0d6efd" : "grey.300",
@@ -271,6 +397,7 @@ const MatchDashboard = () => {
                                                         key={val}
                                                         variant="contained"
                                                         onClick={() => handleRemoveScore(player, val)}
+                                                        disabled={isDisqualified}
                                                         sx={{
                                                             minWidth: 40,
                                                             bgcolor: isBlue ? "#0d6efd" : "grey.300",
@@ -291,6 +418,7 @@ const MatchDashboard = () => {
                                                 variant="outlined"
                                                 color="error"
                                                 onClick={() => handleAddPenalty(player)}
+                                                disabled={isDisqualified}
                                                 sx={{
                                                     borderColor: isBlue ? "black" : "",
                                                     color: isBlue ? "black" : "",
@@ -311,7 +439,14 @@ const MatchDashboard = () => {
                                             >
                                                 Scoate Penalizare
                                             </Button>
-                                            <Typography variant="h6" sx={{ ml: 2 }}>
+                                            <Typography
+                                                variant="h6"
+                                                sx={{
+                                                    ml: 2,
+                                                    color: penalties[player] >= 4 ? "#d32f2f" : "inherit",
+                                                    fontWeight: penalties[player] >= 4 ? "bold" : "normal",
+                                                }}
+                                            >
                                                 Penalizări: {penalties[player]}
                                             </Typography>
                                         </Box>
@@ -334,8 +469,8 @@ const MatchDashboard = () => {
                 </Grid>
 
                 <Box sx={{ textAlign: "center", mt: 6 }}>
-                    <Button variant="contained" size="large" onClick={() => console.log({ score, penalties, time })} sx={{ px: 6, py: 2 }}>
-                        Finalizează Meciul
+                    <Button variant="contained" size="large" onClick={handleFinalizeMeci} disabled={isFinalizingMatch} sx={{ px: 6, py: 2 }}>
+                        {isFinalizingMatch ? "Se finalizează..." : "Finalizează Meciul"}
                     </Button>
                     <Button variant="contained" size="large" onClick={openPublicScreen} sx={{ px: 6, py: 2, ml: 4 }}>
                         Ecran Public

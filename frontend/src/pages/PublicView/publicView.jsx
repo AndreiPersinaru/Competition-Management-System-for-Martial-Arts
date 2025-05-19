@@ -18,7 +18,7 @@ const PublicView = () => {
             if (type === "update") {
                 if (metadata) {
                     setPlayer1(metadata.teams[0]?.name || "");
-                    setPlayer2(metadata.teams[0]?.name || "");
+                    setPlayer2(metadata.teams[1]?.name || "");
                 }
 
                 if (metadata) setMetadata(metadata);
@@ -91,7 +91,7 @@ const PublicView = () => {
                     backgroundColor: "rgba(0, 0, 0, 0.9)",
                     color: "white",
                     borderRadius: "16px",
-                    px: 3,
+                    px: 30,
                     zIndex: 1,
                 }}
             >

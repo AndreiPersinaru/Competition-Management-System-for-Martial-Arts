@@ -184,6 +184,35 @@ const Excel = () => {
         }
     };
 
+    //download excel rankings
+    const downloadRankings = async () => {
+        try {
+            const token = localStorage.getItem("authToken");
+            const headers = token ? { Authorization: `Bearer ${token}` } : {};
+            const response = await axios.get(`${API_BASE_URL}/competitii/${competitionId}/ranking/download`, {
+                responseType: "blob",
+                headers,
+            });
+            const disposition = response.headers["content-disposition"];
+            const filenameMatch = disposition && disposition.match(/filename\*=UTF-8''(.+)/);
+            const filename = filenameMatch ? decodeURIComponent(filenameMatch[1]) : "template.xlsx";
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement("a");
+            link.href = url;
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+            showSnackbar("Lista descărcată cu succes!", "success");
+        } catch (error) {
+            console.error("Eroare la descărcarea listei:", error);
+            showSnackbar("Eroare la descărcarea listei. Te rugăm să încerci din nou.", "error");
+        }
+    };
+
     const showSnackbar = (message, severity) => {
         setSnackbarMessage(message);
         setSnackbarSeverity(severity);
@@ -217,6 +246,9 @@ const Excel = () => {
                 </Button>
                 <Button variant="outlined" color="primary" startIcon={<FileDownloadIcon />} onClick={downloadList} sx={{ ml: 2, px: 4, py: 1.5 }}>
                     Descarcă Lista Sportivilor
+                </Button>
+                <Button variant="outlined" color="primary" startIcon={<FileDownloadIcon />} onClick={downloadRankings} sx={{ ml: 2, px: 4, py: 1.5 }}>
+                    Descarcă Clasamentul
                 </Button>
             </Box>
 

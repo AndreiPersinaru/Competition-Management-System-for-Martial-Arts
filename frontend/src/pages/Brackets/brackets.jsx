@@ -28,7 +28,6 @@ const CustomSeed = ({ seed, breakpoint }) => {
                     onClick={() => handleClick(seed)}
                     style={{
                         cursor: hasValidMatch ? "pointer" : "default",
-                        opacity: hasValidMatch ? 1 : 0.7,
                     }}
                 >
                     <SeedTeam
@@ -355,12 +354,11 @@ const BracketPage = () => {
         const matchData = filteredData.map((m) => {
             const cat = categoriiMap[m.categorie];
             const probaNume = probes.find((p) => p.id === cat?.proba)?.nume;
-
             return {
                 id: m.id,
                 teams: [
-                    { name: m.sportiv1_nume || "-------", score: m.scor1 },
-                    { name: m.sportiv2_nume || "-------", score: m.scor2 },
+                    { idSportiv: m.sportiv1, name: m.sportiv1_nume || "-------", score: m.scor1 },
+                    { idSportiv: m.sportiv2, name: m.sportiv2_nume || "-------", score: m.scor2 },
                 ],
                 greutate: m.greutate,
                 varsta: m.varsta,
