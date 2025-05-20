@@ -2,12 +2,18 @@ import { Box, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 
 const PublicView = () => {
-    const [player1, setPlayer1] = useState("");
-    const [player2, setPlayer2] = useState("");
+    const [player1, setPlayer1] = useState({ name: "", club: "" });
+    const [player2, setPlayer2] = useState({ name: "", club: "" });
     const [score, setScore] = useState([0, 0]);
     const [penalties, setPenalties] = useState([0, 0]);
     const [time, setTime] = useState(300);
     const [metadata, setMetadata] = useState({});
+
+    const splitNameAndClub = (fullName) => {
+        const match = fullName.match(/^(.+?)\s*\((.+)\)$/);
+        if (match) return { name: match[1].trim(), club: match[2].trim() };
+        return { name: fullName, club: "" };
+    };
 
     useEffect(() => {
         const channel = new BroadcastChannel("match_channel");
@@ -17,11 +23,11 @@ const PublicView = () => {
 
             if (type === "update") {
                 if (metadata) {
-                    setPlayer1(metadata.teams[0]?.name || "");
-                    setPlayer2(metadata.teams[1]?.name || "");
+                    setPlayer1(splitNameAndClub(metadata.teams[0]?.name || ""));
+                    setPlayer2(splitNameAndClub(metadata.teams[1]?.name || ""));
+                    setMetadata(metadata);
                 }
 
-                if (metadata) setMetadata(metadata);
                 if (score) setScore(score);
                 if (penalties) setPenalties(penalties);
                 if (time !== undefined) setTime(time);
@@ -48,43 +54,28 @@ const PublicView = () => {
             />
         ));
 
-    const PlayerRow = ({ name, score, penalties, bgColor }) => (
-        <Box height="40vh" position="relative" display="flex" alignItems="center" bgcolor={bgColor}>
-            <Box width="100%" display="flex" flexDirection="column" pl={20}>
-                <Typography fontSize="4vw" fontWeight="bold">
-                    {name}
-                </Typography>
-                <Box display="flex">{renderPenalties(penalties)}</Box>
-            </Box>
-            <Box position="absolute" right={40} top="50%" sx={{ transform: "translateY(-50%)" }}>
-                <Typography fontSize="12vw">{score}</Typography>
-            </Box>
-        </Box>
-    );
-
     return (
         <Box height="100vh" position="relative">
-            <Box height="20vh" bgcolor="black" display="flex" flexDirection="column" justifyContent="center" alignItems="center">
-                <Typography fontSize="3vw" color="white">
-                    Campionatul National de Pangration Athlima
-                </Typography>
-
-                <Box display="flex" justifyContent="center" width="100%" gap={10}>
-                    <Typography fontSize="2.5vw" color="white">
-                        {metadata?.proba}
+            <Box height="40vh" position="relative" display="flex" alignItems="center" bgcolor="#198dd2">
+                <Box width="100%" display="flex" flexDirection="column" pl={20} pt={"8vh"} justifyContent="flex-start" height="100%">
+                    <Typography fontSize="4vw" fontWeight="bold">
+                        {player1.name}
                     </Typography>
-                    <Typography fontSize="2.5vw" color="white">
-                        {metadata?.varsta} ani
+                    <Typography fontSize="2.5vw" fontWeight="medium">
+                        {player1.club}
                     </Typography>
-                    <Typography fontSize="2.5vw" color="white">
-                        {metadata?.greutate} KG
-                    </Typography>
+                    <Box display="flex" pt={"10vh"}>
+                        {renderPenalties(penalties[0])}
+                    </Box>
+                </Box>
+                <Box position="absolute" right={40} top="50%" sx={{ transform: "translateY(-50%)" }}>
+                    <Typography fontSize="12vw">{score[0]}</Typography>
                 </Box>
             </Box>
-            <PlayerRow name={player1} score={score[0]} penalties={penalties[0]} bgColor="#198dd2" />
+
             <Box
                 position="absolute"
-                top="60%"
+                top="40%"
                 left="50%"
                 sx={{
                     transform: "translate(-50%, -50%)",
@@ -100,7 +91,40 @@ const PublicView = () => {
                 </Typography>
             </Box>
 
-            <PlayerRow name={player2} score={score[1]} penalties={penalties[1]} bgColor="white" />
+            <Box height="40vh" position="relative" display="flex" alignItems="center" bgcolor="white">
+                <Box width="100%" display="flex" flexDirection="column" pl={20} pb={"8vh"} justifyContent="flex-end" height="100%">
+                    <Box display="flex" pb={"10vh"}>
+                        {renderPenalties(penalties[1])}
+                    </Box>
+                    <Typography fontSize="2.5vw" fontWeight="medium">
+                        {player2.club}
+                    </Typography>
+                    <Typography fontSize="4vw" fontWeight="bold">
+                        {player2.name}
+                    </Typography>
+                </Box>
+                <Box position="absolute" right={40} top="50%" sx={{ transform: "translateY(-50%)" }}>
+                    <Typography fontSize="12vw">{score[1]}</Typography>
+                </Box>
+            </Box>
+
+            <Box height="20vh" bgcolor="black" display="flex" flexDirection="column" justifyContent="center" alignItems="center">
+                <Typography fontSize="3vw" color="red">
+                    Campionatul National de Pangration Athlima
+                </Typography>
+
+                <Box display="flex" justifyContent="center" width="100%" gap={10}>
+                    <Typography fontSize="2.5vw" color="red">
+                        {metadata?.proba}
+                    </Typography>
+                    <Typography fontSize="2.5vw" color="red">
+                        {metadata?.varsta} ani
+                    </Typography>
+                    <Typography fontSize="2.5vw" color="red">
+                        {metadata?.greutate} KG
+                    </Typography>
+                </Box>
+            </Box>
         </Box>
     );
 };

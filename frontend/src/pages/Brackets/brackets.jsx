@@ -3,6 +3,7 @@ import { Bracket, Seed, SeedItem, SeedTeam } from "react-brackets";
 import { Select, MenuItem, FormControl, InputLabel, Box, Typography, Grid } from "@mui/material";
 import axios from "axios";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import Navbar from "../../components/sections/Navbar/navbar";
 
 const CustomSeed = ({ seed, breakpoint }) => {
     const navigate = useNavigate();
@@ -421,68 +422,71 @@ const BracketPage = () => {
     }
 
     return (
-        <Box p={3}>
-            <Grid container spacing={2}>
-                <Grid item xs={12} md={3}>
-                    <FormControl fullWidth>
-                        <InputLabel>Probă</InputLabel>
-                        <Select value={selectedCategoryId || ""} label="Probă" onChange={(e) => handleProbaChange(e.target.value)}>
-                            {probes.map((proba) => (
-                                <MenuItem key={proba.id} value={proba.id}>
-                                    {proba.nume}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
+        <>
+            <Navbar />
+            <Box p={3} mt={"4.5rem"}>
+                <Grid container spacing={2}>
+                    <Grid item xs={12} md={3}>
+                        <FormControl fullWidth>
+                            <InputLabel>Probă</InputLabel>
+                            <Select value={selectedCategoryId || ""} label="Probă" onChange={(e) => handleProbaChange(e.target.value)}>
+                                {probes.map((proba) => (
+                                    <MenuItem key={proba.id} value={proba.id}>
+                                        {proba.nume}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                        <FormControl fullWidth disabled={!selectedCategoryId}>
+                            <InputLabel>Gen</InputLabel>
+                            <Select value={sex} label="Gen" onChange={(e) => handleSexChange(e.target.value)}>
+                                {availableSexOptions.map((sexOption) => (
+                                    <MenuItem key={sexOption} value={sexOption}>
+                                        {sexOption === "M" ? "Masculin" : "Feminin"}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                        <FormControl fullWidth disabled={!sex}>
+                            <InputLabel>Vârstă</InputLabel>
+                            <Select value={age} label="Vârstă" onChange={(e) => handleAgeChange(e.target.value)}>
+                                {availableAgeOptions.map((ageOption) => (
+                                    <MenuItem key={ageOption} value={ageOption}>
+                                        {ageOption}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                        <FormControl fullWidth disabled={!age}>
+                            <InputLabel>Greutate</InputLabel>
+                            <Select value={weight} label="Greutate" onChange={(e) => handleWeightChange(e.target.value)}>
+                                {availableWeightOptions.map((weightOption) => (
+                                    <MenuItem key={weightOption} value={weightOption}>
+                                        {weightOption} KG
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Grid>
                 </Grid>
-                <Grid item xs={12} md={3}>
-                    <FormControl fullWidth disabled={!selectedCategoryId}>
-                        <InputLabel>Gen</InputLabel>
-                        <Select value={sex} label="Gen" onChange={(e) => handleSexChange(e.target.value)}>
-                            {availableSexOptions.map((sexOption) => (
-                                <MenuItem key={sexOption} value={sexOption}>
-                                    {sexOption === "M" ? "Masculin" : "Feminin"}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                </Grid>
-                <Grid item xs={12} md={3}>
-                    <FormControl fullWidth disabled={!sex}>
-                        <InputLabel>Vârstă</InputLabel>
-                        <Select value={age} label="Vârstă" onChange={(e) => handleAgeChange(e.target.value)}>
-                            {availableAgeOptions.map((ageOption) => (
-                                <MenuItem key={ageOption} value={ageOption}>
-                                    {ageOption}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                </Grid>
-                <Grid item xs={12} md={3}>
-                    <FormControl fullWidth disabled={!age}>
-                        <InputLabel>Greutate</InputLabel>
-                        <Select value={weight} label="Greutate" onChange={(e) => handleWeightChange(e.target.value)}>
-                            {availableWeightOptions.map((weightOption) => (
-                                <MenuItem key={weightOption} value={weightOption}>
-                                    {weightOption} KG
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                </Grid>
-            </Grid>
 
-            <Box mt={4}>
-                {filteredData.length > 0 && participants > 0 ? (
-                    renderBracket()
-                ) : (
-                    <Typography variant="h6" align="center" mt={5}>
-                        Selectează proba, genul, vârsta și greutatea pentru a vizualiza bracketul.
-                    </Typography>
-                )}
+                <Box mt={4}>
+                    {filteredData.length > 0 && participants > 0 ? (
+                        renderBracket()
+                    ) : (
+                        <Typography variant="h6" align="center" mt={5}>
+                            Selectează proba, genul, vârsta și greutatea pentru a vizualiza bracketul.
+                        </Typography>
+                    )}
+                </Box>
             </Box>
-        </Box>
+        </>
     );
 };
 

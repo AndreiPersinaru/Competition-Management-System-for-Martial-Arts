@@ -231,8 +231,9 @@ class UploadParticipantsView(APIView):
                     "data_nastere": data_nastere,
                     "nr_legitimatie": nr_leg,
                 })
+                
+                varsta = (competitie.data_incepere - data_nastere).days // 365
 
-                varsta = competitie.data_incepere.year - data_nastere.year
 
                 proba_obj, _ = Proba.objects.get_or_create(nume=proba_nume)
 
