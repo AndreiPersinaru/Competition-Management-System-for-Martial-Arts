@@ -6,6 +6,7 @@ import Navbar from "../../components/sections/Navbar/navbar";
 import Footer from "../../components/sections/Footer/footer";
 import { ArrowRight, CalendarToday, LocationOn, SportsMartialArts } from "@mui/icons-material";
 import Excel from "../../components/sections/Excel/excel";
+import API_URL from "../../config";
 
 export default function CompetitionPage() {
     const { id } = useParams();
@@ -18,7 +19,7 @@ export default function CompetitionPage() {
     useEffect(() => {
         const fetchCompetition = async () => {
             try {
-                const response = await axios.get(`http://localhost:8000/api/competitions/${id}/`);
+                const response = await axios.get(`${API_URL}/competitions/${id}/`);
                 let data = response.data;
                 const map = new Map();
                 data.probe.forEach((proba) => {
@@ -114,7 +115,7 @@ export default function CompetitionPage() {
                     display: "flex",
                     flexDirection: isMobile ? "column" : "row",
                     pt: "4.5rem",
-                    height: "calc(100vh - 4.5rem)",
+                    minHeight: "calc(100vh - 4.5rem)",
                     overflow: "hidden",
                 }}
             >

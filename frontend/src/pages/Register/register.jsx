@@ -7,6 +7,7 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { AuthContext } from "../../context/AuthContext";
 import backgroundImage from "../../assets/pictures/home-background.jpg";
+import API_URL from "../../config";
 
 const Register = () => {
     const { login } = useContext(AuthContext);
@@ -36,7 +37,7 @@ const Register = () => {
         setError("");
 
         try {
-            const response = await apiClient.post("http://127.0.0.1:8000/api/register/", {
+            const response = await apiClient.post(`${API_URL}/register/`, {
                 username,
                 password,
                 email,

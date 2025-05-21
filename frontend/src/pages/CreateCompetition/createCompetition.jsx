@@ -4,6 +4,7 @@ import backgroundImage from "../../assets/pictures/home-background.jpg";
 import Navbar from "../../components/sections/Navbar/navbar";
 import axios from "axios";
 import { EditCalendar } from "@mui/icons-material";
+import API_URL from "../../config";
 
 const getEmbedLink = (link) => {
     const match = link.match(/src="([^"]+)"/);
@@ -49,7 +50,7 @@ const CreateCompetition = () => {
 
         try {
             await axios.post(
-                "http://127.0.0.1:8000/api/competitions/",
+                `${API_URL}/competitions/`,
                 {
                     nume,
                     data_incepere: dataIncepere,

@@ -5,6 +5,7 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import axios from "axios";
+import API_URL from "../../../config";
 
 const Excel = () => {
     const params = useParams();
@@ -19,8 +20,6 @@ const Excel = () => {
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState("");
     const [snackbarSeverity, setSnackbarSeverity] = useState("info");
-
-    const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
     const handleDragEnter = (e) => {
         e.preventDefault();
@@ -80,7 +79,7 @@ const Excel = () => {
             const token = localStorage.getItem("authToken");
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-            const response = await axios.get(`${API_BASE_URL}/competitii/${competitionId}/template/`, {
+            const response = await axios.get(`${API_URL}/competitii/${competitionId}/template/`, {
                 responseType: "blob",
                 headers,
             });
@@ -109,7 +108,7 @@ const Excel = () => {
         try {
             const token = localStorage.getItem("authToken");
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
-            const response = await axios.get(`${API_BASE_URL}/competitii/${competitionId}/export-participants/`, {
+            const response = await axios.get(`${API_URL}/competitii/${competitionId}/export-participants/`, {
                 responseType: "blob",
                 headers,
             });
@@ -156,7 +155,7 @@ const Excel = () => {
                       "Content-Type": "multipart/form-data",
                   };
 
-            const response = await axios.post(`${API_BASE_URL}/competitii/${competitionId}/upload-participants/`, formData, { headers });
+            const response = await axios.post(`${API_URL}/competitii/${competitionId}/upload-participants/`, formData, { headers });
 
             setUploadSuccess(true);
             setFile(null);
@@ -189,7 +188,7 @@ const Excel = () => {
         try {
             const token = localStorage.getItem("authToken");
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
-            const response = await axios.get(`${API_BASE_URL}/competitii/${competitionId}/ranking/download`, {
+            const response = await axios.get(`${API_URL}/competitii/${competitionId}/ranking/download`, {
                 responseType: "blob",
                 headers,
             });

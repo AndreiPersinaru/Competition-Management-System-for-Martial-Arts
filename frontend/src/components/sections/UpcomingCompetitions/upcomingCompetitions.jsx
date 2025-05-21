@@ -4,6 +4,7 @@ import { EventAvailable, Timeline, LocationOn } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { useEffect, useState } from "react";
+import API_URL from "../../../config";
 
 const UpcomingCompetitions = () => {
     const [upcomingEvents, setUpcomingEvents] = useState([]);
@@ -19,7 +20,7 @@ const UpcomingCompetitions = () => {
 
     const fetchUpcomingEvents = async () => {
         try {
-            const response = await apiClient.get("http://127.0.0.1:8000/api/competitions/");
+            const response = await apiClient.get(`${API_URL}/competitions/`);
             const today = new Date();
 
             const upcoming = response.data

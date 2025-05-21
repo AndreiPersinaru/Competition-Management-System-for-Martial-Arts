@@ -4,6 +4,7 @@ import { Select, MenuItem, FormControl, InputLabel, Box, Typography, Grid } from
 import axios from "axios";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import Navbar from "../../components/sections/Navbar/navbar";
+import API_URL from "../../config";
 
 const CustomSeed = ({ seed, breakpoint }) => {
     const navigate = useNavigate();
@@ -161,9 +162,9 @@ const BracketPage = () => {
             setIsLoading(true);
             try {
                 const [meciuriRes, sportiviRes, categoriiRes] = await Promise.all([
-                    apiClient.get("http://127.0.1:8000/api/meciuri/"),
-                    apiClient.get("http://127.0.1:8000/api/sportivi/"),
-                    apiClient.get("http://127.0.1:8000/api/categorii/"),
+                    apiClient.get(`${API_URL}/meciuri/`),
+                    apiClient.get(`${API_URL}/sportivi/`),
+                    apiClient.get(`${API_URL}/categorii/`),
                 ]);
 
                 const meciuri = meciuriRes.data;
@@ -195,7 +196,7 @@ const BracketPage = () => {
                     }
                 });
 
-                const probeRes = await Promise.all(Array.from(probaIds).map((id) => apiClient.get(`http://127.0.1:8000/api/probe/${id}/`)));
+                const probeRes = await Promise.all(Array.from(probaIds).map((id) => apiClient.get(`${API_URL}/probe/${id}/`)));
 
                 const probaMap = {};
                 probeRes.forEach((res) => {
@@ -244,7 +245,7 @@ const BracketPage = () => {
         if (dataLoaded && location.state?.refreshData) {
             const refreshMatches = async () => {
                 try {
-                    const meciuriRes = await apiClient.get("http://127.0.1:8000/api/meciuri/");
+                    const meciuriRes = await apiClient.get(`${API_URL}/meciuri/`);
                     const meciuri = meciuriRes.data;
 
                     setBracketData((prevData) =>

@@ -297,6 +297,7 @@ class UploadParticipantsView(APIView):
 
 # ========== DOWNLOAD RANKING EXCEL ==========
 
+
 class DownloadRankingView(APIView):
     permission_classes = []
 
@@ -452,6 +453,216 @@ class DownloadRankingView(APIView):
         if not clasament_cluburi:
             ws_cluburi.cell(row=2, column=1).value = "Nu există clasamente de cluburi disponibile pentru această competiție"
             ws_cluburi.cell(row=2, column=1).font = openpyxl.styles.Font(italic=True, name="Calibri")
+        
+        # ============= SHEET 3: STATISTICI =============
+        ws_statistici = wb.create_sheet(title="Statistici")
+        
+        # Headers pentru statistici similare cu cele din imagine
+        headers_statistici = ["CATEGORIA", "", "", "", "LOC 1", "LOC 2", "LOC 3"]
+        
+        # Adăugăm headers
+        ws_statistici.append(headers_statistici)
+        
+        # Mergem celulele pentru headerul CATEGORIA
+        ws_statistici.merge_cells(start_row=1, start_column=1, end_row=1, end_column=4)
+        
+        # Definim maparea pentru etichetele categoriilor de vârstă
+        etichete_varsta = {
+            (6, 7): "COPII 1",
+            (8, 9): "COPII 2",
+            (10, 11): "CADEȚI 1",
+            (12, 14): "CADEȚI 2",
+            (15, 17): "JUNIORI",
+            (18, 20): "TINERET",
+            (21, 34): "SENIORI",
+            (35, 100): "VETERANI"  # Folosim 100 ca limită superioară pentru veterani
+        }
+        
+        # Funcție pentru a determina eticheta corectă în funcție de vârsta
+        def get_eticheta_varsta(varsta_min, varsta_max):
+            for (min_range, max_range), eticheta in etichete_varsta.items():
+                if varsta_min >= min_range and varsta_max <= max_range:
+                    return eticheta
+            return "NESPECIFICAT"  # în caz că nu găsim o potrivire
+        
+        # Grupăm statisticile pe categorii și genuri
+        statistici = {}
+        
+        for clasament in clasamente:
+            categorie = clasament.categorie
+            sportiv = clasament.sportiv
+            
+            # Determinăm genul
+            gen_display = "FEMININ" if categorie.sex == "F" else "MASCULIN"
+            
+            # Determinăm categoria de vârstă și eticheta corespunzătoare
+            varsta_range = f"{categorie.varsta_min} - {categorie.varsta_max} ANI"
+            eticheta = get_eticheta_varsta(categorie.varsta_min, categorie.varsta_max)
+            
+            # Determinăm categoria de greutate
+            cat_kg_display = f"{categorie.categorie_greutate} KG" if categorie.categorie_greutate else "FĂRĂ CATEGORIE"
+            
+            # Creăm cheia pentru statistici (similar cu formatul din imagine)
+            categorie_key = (f"{categorie.proba.nume.upper()} {gen_display}", varsta_range, cat_kg_display, eticheta)
+            
+            if categorie_key not in statistici:
+                statistici[categorie_key] = {1: None, 2: None, 3: None}
+            
+            # Pentru fiecare locuri 1, 2, 3 salvăm datele sportivului
+            sorted_clasamente = sorted(clasamente, key=lambda x: x.puncte)
+            
+            # Trebuie să găsim locul sportivului curent în categoria sa
+            clasamente_aceeasi_categorie = [c for c in clasamente if 
+                                           c.categorie.proba.nume == categorie.proba.nume and
+                                           c.categorie.sex == categorie.sex and
+                                           c.categorie.categorie_greutate == categorie.categorie_greutate and
+                                           c.categorie.varsta_min == categorie.varsta_min and
+                                           c.categorie.varsta_max == categorie.varsta_max]
+            
+            clasamente_aceeasi_categorie.sort(key=lambda x: x.puncte)
+            
+            # Găsim locul sportivului curent
+            try:
+                loc = clasamente_aceeasi_categorie.index(clasament) + 1
+                
+                # Salvăm datele doar pentru locurile 1, 2, 3
+                if loc <= 3 and statistici[categorie_key][loc] is None:
+                    cnp = sportiv.cnp if hasattr(sportiv, 'cnp') else ""
+                    club = sportiv.club.nume if sportiv.club else ""
+                    
+                    statistici[categorie_key][loc] = {
+                        'nume': f"{sportiv.nume} {sportiv.prenume}",
+                        'cnp': cnp,
+                        'club': club
+                    }
+            except ValueError:
+                # Sportivul nu a fost găsit în lista sortată
+                pass
+        
+        # Aplicăm stiluri pentru tabelul de statistici
+        for col_idx, header in enumerate(["CATEGORIA", "LOC 1", "LOC 2", "LOC 3"], start=1):
+            col_letter = get_column_letter(1 if col_idx == 1 else col_idx + 3)  # Ajustăm pentru poziția reală a coloanelor
+            ws_statistici.column_dimensions[col_letter].width = 35  # Lățimea coloanelor
+            
+            # Styling pentru header
+            cell = ws_statistici[f"{col_letter}1"]
+            cell.font = openpyxl.styles.Font(bold=True, name="Calibri", italic=True, color="FF0000")  # Roșu
+            cell.alignment = openpyxl.styles.Alignment(horizontal='center', vertical='center')
+            cell.border = openpyxl.styles.Border(
+                left=openpyxl.styles.Side(style='thin'),
+                right=openpyxl.styles.Side(style='thin'),
+                top=openpyxl.styles.Side(style='thin'),
+                bottom=openpyxl.styles.Side(style='thin')
+            )
+        
+        # Adăugăm datele pentru statistici
+        row_num_statistici = 2
+        
+        # Sortăm cheile pentru a păstra ordinea categoriilor
+        sorted_keys = sorted(statistici.keys())
+        
+        # Modificarea codului pentru eliminarea bordurilor între rândurile 2-3 și 3-4 pentru fiecare categorie
+
+# ... (cod anterior nemodificat)
+
+        # Înlocuim partea cu bordurile din cod:
+        for categorie_key in sorted_keys:
+            proba_gen, varsta, kg, eticheta = categorie_key
+            
+            # Prima coloană - Proba
+            proba_cell = ws_statistici.cell(row=row_num_statistici, column=1)
+            proba_cell.value = proba_gen
+            proba_cell.font = openpyxl.styles.Font(bold=True, name="Calibri", color="FF0000")  # Roșu
+            proba_cell.alignment = openpyxl.styles.Alignment(horizontal='center', vertical='center')
+            
+            # A doua coloană - Categoria de vârstă
+            varsta_cell = ws_statistici.cell(row=row_num_statistici, column=2)
+            varsta_cell.value = varsta
+            varsta_cell.font = openpyxl.styles.Font(bold=True, name="Calibri")
+            varsta_cell.alignment = openpyxl.styles.Alignment(horizontal='center', vertical='center')
+            
+            # A treia coloană - Categoria de greutate
+            kg_cell = ws_statistici.cell(row=row_num_statistici, column=3)
+            kg_cell.value = kg
+            kg_cell.font = openpyxl.styles.Font(bold=True, name="Calibri")
+            kg_cell.alignment = openpyxl.styles.Alignment(horizontal='center', vertical='center')
+            
+            # A patra coloană - Eticheta categoriei de vârstă
+            eticheta_cell = ws_statistici.cell(row=row_num_statistici, column=4)
+            eticheta_cell.value = eticheta
+            eticheta_cell.font = openpyxl.styles.Font(bold=True, name="Calibri")
+            eticheta_cell.alignment = openpyxl.styles.Alignment(horizontal='center', vertical='center')
+            
+            # Adăugăm datele pentru locurile 1, 2, 3
+            for loc in range(1, 4):
+                sportiv_data = statistici[categorie_key][loc]
+                col_idx = loc + 4  # LOC 1 începe de la coloana 5 (E)
+                
+                if sportiv_data:
+                    # Rândul 1: Numele sportivului
+                    nume_cell = ws_statistici.cell(row=row_num_statistici, column=col_idx)
+                    nume_cell.value = sportiv_data['nume']
+                    nume_cell.font = openpyxl.styles.Font(bold=True, name="Calibri")
+                    nume_cell.alignment = openpyxl.styles.Alignment(horizontal='center', vertical='center')
+                    
+                    # Rândul 2: CNP-ul sportivului
+                    cnp_cell = ws_statistici.cell(row=row_num_statistici + 1, column=col_idx)
+                    cnp_cell.value = f"CNP {sportiv_data['cnp']}"
+                    cnp_cell.font = openpyxl.styles.Font(bold=True, name="Calibri", color="FF0000")  # Roșu
+                    cnp_cell.alignment = openpyxl.styles.Alignment(horizontal='center', vertical='center')
+                    
+                    # Rândul 3: Clubul sportivului
+                    club_cell = ws_statistici.cell(row=row_num_statistici + 2, column=col_idx)
+                    club_cell.value = sportiv_data['club']
+                    club_cell.font = openpyxl.styles.Font(bold=True, name="Calibri", color="FF0000")  # Roșu
+                    club_cell.alignment = openpyxl.styles.Alignment(horizontal='center', vertical='center')
+            
+            # Adăugăm celule goale pentru coloanele de categorie pe rândurile 2 și 3
+            for col in range(1, 5):
+                for row_offset in range(1, 3):
+                    cell = ws_statistici.cell(row=row_num_statistici + row_offset, column=col)
+                    cell.value = ""  # Celulă goală
+            
+            # Aplicăm bordurile doar unde este necesar
+            for row in range(row_num_statistici, row_num_statistici + 3):
+                for col in range(1, 8):  # 7 coloane în total
+                    cell = ws_statistici.cell(row=row, column=col)
+                    
+                    # Definim bordurile laterale (stânga și dreapta) pentru toate celulele
+                    thin_border_sides = openpyxl.styles.Border(
+                        left=openpyxl.styles.Side(style='thin'),
+                        right=openpyxl.styles.Side(style='thin'),
+                        top=openpyxl.styles.Side(style='none'),
+                        bottom=openpyxl.styles.Side(style='none')
+                    )
+                    
+                    # Aplicăm borduri complete doar pentru primul și ultimul rând din fiecare grupare de 3 rânduri
+                    if row == row_num_statistici:  # Prima linie din grupul de 3
+                        border = openpyxl.styles.Border(
+                            left=openpyxl.styles.Side(style='thin'),
+                            right=openpyxl.styles.Side(style='thin'),
+                            top=openpyxl.styles.Side(style='thin'),
+                            bottom=openpyxl.styles.Side(style='none')
+                        )
+                        cell.border = border
+                    elif row == row_num_statistici + 2:  # Ultima linie din grupul de 3
+                        border = openpyxl.styles.Border(
+                            left=openpyxl.styles.Side(style='thin'),
+                            right=openpyxl.styles.Side(style='thin'),
+                            top=openpyxl.styles.Side(style='none'),
+                            bottom=openpyxl.styles.Side(style='thin')
+                        )
+                        cell.border = border
+                    else:  # Linia din mijloc (row_num_statistici + 1)
+                        cell.border = thin_border_sides
+            
+            # După ce am adăugat toate datele pentru o categorie, trecem la rândul următor
+            row_num_statistici += 3  # Trecem la următoarea categorie (3 rânduri pentru fiecare categorie)          
+        
+        # Dacă nu avem statistici, adăugăm un mesaj
+        if not statistici:
+            ws_statistici.cell(row=2, column=1).value = "Nu există statistici disponibile pentru această competiție"
+            ws_statistici.cell(row=2, column=1).font = openpyxl.styles.Font(italic=True, name="Calibri")
 
         # Pregătim răspunsul HTTP
         response = HttpResponse(

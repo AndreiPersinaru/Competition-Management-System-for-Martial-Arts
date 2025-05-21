@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import Navbar from "../../components/sections/Navbar/navbar";
 import Footer from "../../components/sections/Footer/footer";
 import { useTheme } from "@mui/material/styles";
+import API_URL from "../../config";
 
 export default function Competitions() {
     const [competitions, setCompetitions] = useState([]);
@@ -17,7 +18,7 @@ export default function Competitions() {
 
     const fetchAllCompetitions = async () => {
         try {
-            const response = await axios.get("http://127.0.0.1:8000/api/competitions/");
+            const response = await axios.get(`${API_URL}/competitions/`);
             const formatted = response.data.map((event) => {
                 const startDate = new Date(event.data_incepere);
                 const endDate = new Date(event.data_sfarsit);
@@ -62,7 +63,7 @@ export default function Competitions() {
         fetchAllCompetitions();
     }, []);
 
-    const visibleCompetitions = competitions.filter(c => showPast || c.status !== "past");
+    const visibleCompetitions = competitions.filter((c) => showPast || c.status !== "past");
 
     return (
         <>
@@ -73,13 +74,7 @@ export default function Competitions() {
                         Toate Competițiile
                     </Typography>
 
-                    <Button
-                        variant="outlined"
-                        color="black"
-                        fullWidth
-                        sx={{ mb: 3 }}
-                        onClick={() => setShowPast(prev => !prev)}
-                    >
+                    <Button variant="outlined" color="black" fullWidth sx={{ mb: 3 }} onClick={() => setShowPast((prev) => !prev)}>
                         {showPast ? "Ascunde competițiile finalizate" : "Afișează competițiile finalizate"}
                     </Button>
 
@@ -96,23 +91,8 @@ export default function Competitions() {
                                             <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
                                                 <EventAvailable color="primary" sx={{ mr: 2 }} />
                                                 <Typography variant="h6">{event.name}</Typography>
-                                                {event.status === "past" && (
-                                                    <Chip
-                                                        label="Finalizat"
-                                                        size="small"
-                                                        icon={<CheckCircleOutline fontSize="small" />}
-                                                        sx={{ ml: 2 }}
-                                                    />
-                                                )}
-                                                {event.status === "ongoing" && (
-                                                    <Chip
-                                                        label="În desfășurare"
-                                                        size="small"
-                                                        color="primary"
-                                                        icon={<AccessTime fontSize="small" />}
-                                                        sx={{ ml: 2 }}
-                                                    />
-                                                )}
+                                                {event.status === "past" && <Chip label="Finalizat" size="small" icon={<CheckCircleOutline fontSize="small" />} sx={{ ml: 2 }} />}
+                                                {event.status === "ongoing" && <Chip label="În desfășurare" size="small" color="primary" icon={<AccessTime fontSize="small" />} sx={{ ml: 2 }} />}
                                             </Box>
 
                                             <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>

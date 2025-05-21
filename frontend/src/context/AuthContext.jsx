@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
+import API_URL from "../config";
 
 export const AuthContext = createContext();
 
@@ -31,7 +32,7 @@ export const AuthProvider = ({ children }) => {
 
         try {
             const response = await axios.post(
-                "http://127.0.0.1:8000/api/login/refresh/",
+                `${API_URL}/login/refresh/`,
                 {
                     refresh: currentRefreshToken,
                 },
@@ -67,7 +68,7 @@ export const AuthProvider = ({ children }) => {
             const accessToken = localStorage.getItem("access_token");
             
             if (refreshToken && accessToken) {
-                await axios.post("http://127.0.0.1:8000/api/logout/", 
+                await axios.post(`${API_URL}/logout/`, 
                     { refresh_token: refreshToken },
                     { headers: { 'Authorization': `Bearer ${accessToken}` } }
                 );

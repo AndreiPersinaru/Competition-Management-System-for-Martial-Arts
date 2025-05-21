@@ -6,6 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../../components/sections/Navbar/navbar";
 import timerEndSound from "../../assets/sounds/var1.wav";
+import API_URL from "../../config";
 
 const PLAYER_BLUE = 0;
 const PLAYER_WHITE = 1;
@@ -269,7 +270,7 @@ const MatchDashboard = () => {
         console.log("Request payload:", requestPayload);
 
         const token = localStorage.getItem("access_token");
-        const response = await axios.patch(`http://127.0.1:8000/api/meciuri/${metadata.id}/finalizare/`, requestPayload, {
+        const response = await axios.patch(`${API_URL}/meciuri/${metadata.id}/finalizare/`, requestPayload, {
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,

@@ -21,12 +21,12 @@ class MeciViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.request.method == 'GET':
             return [AllowAny()]
-        return [IsAuthenticated()]
+        return [AllowAny()]
 
     def get_authenticators(self):
         if self.request.method == 'GET':
             return []
-        return [JWTAuthentication()]
+        return []
 
     @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated])
     def finalizare(self, request, pk=None):
