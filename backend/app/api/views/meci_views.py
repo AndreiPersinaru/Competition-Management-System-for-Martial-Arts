@@ -58,11 +58,15 @@ class MeciViewSet(viewsets.ModelViewSet):
         try:
             with transaction.atomic():
                 castigator = None
+                pierzator = None
+                
                 if castigator_id:
                     if castigator_id == meci.sportiv1.id:
                         castigator = meci.sportiv1
+                        pierzator = meci.sportiv2
                     elif castigator_id == meci.sportiv2.id:
                         castigator = meci.sportiv2
+                        pierzator = meci.sportiv1
                     else:
                         return Response({
                             'error': 'Câștigător invalid',
@@ -78,11 +82,11 @@ class MeciViewSet(viewsets.ModelViewSet):
                 
                 logger.info(f"Meci finalizat: {meci} - Scor: {scor1}-{scor2} - Câștigător: {castigator}")
                 
-                # Actualizăm clasamentul pe probă
-                self._actualizeaza_clasament_proba(meci, castigator)
+                # Gestionăm avansarea în bracket
+                created_matches = self._gestioneaza_avansare_bracket(meci, castigator, pierzator)
                 
-                # Verificăm și creăm următorul meci
-                next_meci = self._creeaza_urmatorul_meci(meci, castigator)
+                # Actualizăm clasamentul în funcție de tipul de turneu
+                self._actualizeaza_clasament_universal(meci)
                 
                 # Pregătim răspunsul
                 response_data = {
@@ -96,13 +100,15 @@ class MeciViewSet(viewsets.ModelViewSet):
                     }
                 }
                 
-                if next_meci:
-                    response_data['nextMatch'] = {
-                        'id': next_meci.id,
-                        'runda': next_meci.runda,
-                        'sportiv1': str(next_meci.sportiv1) if next_meci.sportiv1 else None,
-                        'sportiv2': str(next_meci.sportiv2) if next_meci.sportiv2 else None
-                    }
+                if created_matches:
+                    response_data['createdMatches'] = [
+                        {
+                            'id': match.id,
+                            'runda': match.runda,
+                            'sportiv1': str(match.sportiv1) if match.sportiv1 else None,
+                            'sportiv2': str(match.sportiv2) if match.sportiv2 else None
+                        } for match in created_matches
+                    ]
                 
                 return Response(response_data, status=status.HTTP_200_OK)
                 
@@ -113,45 +119,344 @@ class MeciViewSet(viewsets.ModelViewSet):
                 'message': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    def _actualizeaza_clasament_proba(self, meci, castigator):
+    def _gestioneaza_avansare_bracket(self, meci_curent, castigator, pierzator):
         """
-        Actualizează clasamentul pe probă folosind calculatorul de clasament.
+        Gestionează avansarea sportivilor în bracket după finalizarea unui meci.
         """
-        from ..utils.clasament_proba import actualizeaza_clasament_dupa_meci
+        created_matches = []
         
-        try:
-            # Actualizăm clasamentul folosind noul sistem
-            actualizeaza_clasament_dupa_meci(meci)
-            logger.info(f"Clasament actualizat pentru {meci.categorie} după meciul {meci.id}")
-        except Exception as e:
-            logger.error(f"Eroare la actualizarea clasamentului pentru meciul {meci.id}: {e}")
-            # Nu ridicăm excepția pentru a nu bloca finalizarea meciului
+        # Verificăm tipul de rundă
+        runda = meci_curent.runda.lower()
+        
+        if 'semifinala' in runda:
+            # După semifinale: câștigătorul merge în finală, pierzătorul în loser bracket
+            
+            # 1. Găsim sau creăm finala
+            finala = self._gaseste_sau_creeaza_finala(meci_curent, castigator)
+            if finala:
+                created_matches.append(finala)
+            
+            # 2. Găsim sau creăm meciul pentru locul 3 (loser bracket)
+            meci_loc3 = self._gaseste_sau_creeaza_meci_loc3(meci_curent, pierzator)
+            if meci_loc3:
+                created_matches.append(meci_loc3)
+                
+        elif 'sferturi' in runda or 'optimi' in runda:
+            # Pentru alte runde, folosim logica existentă
+            next_meci = self._creeaza_urmatorul_meci(meci_curent, castigator)
+            if next_meci:
+                created_matches.append(next_meci)
+        
+        return created_matches
     
-    def _get_puncte_pentru_runda(self, runda, este_castigator):
+    def _gaseste_sau_creeaza_finala(self, meci_curent, castigator):
         """
-        Returnează punctele acordate pentru o anumită rundă.
+        Găsește finala existentă sau o creează dacă nu există.
         """
-        # Punctajul poate fi customizat în funcție de regulile competiției
-        puncte_map = {
-            'Finala': {'castigator': 50, 'infrant': 30},
-            'Semifinala': {'castigator': 30, 'infrant': 20},
-            'Sferturi': {'castigator': 20, 'infrant': 10},
-            'Optimi': {'castigator': 10, 'infrant': 5},
-            'Best of 3': {'castigator': 25, 'infrant': 15},
-            'Round Robin': {'castigator': 15, 'infrant': 5}
-        }
+        # Căutăm finala existentă
+        finala = Meci.objects.filter(
+            competitie=meci_curent.competitie,
+            categorie=meci_curent.categorie,
+            runda='Finala'
+        ).first()
         
-        # Extragem tipul rundei din șirul de caractere
-        for tip_runda in puncte_map.keys():
-            if tip_runda.lower() in runda.lower():
-                return puncte_map[tip_runda]['castigator' if este_castigator else 'infrant']
+        if finala:
+            # Adăugăm câștigătorul în prima poziție liberă
+            if finala.sportiv1 is None:
+                finala.sportiv1 = castigator
+                finala.save()
+                logger.info(f"Câștigător {castigator} adăugat în finala existentă ca sportiv1")
+            elif finala.sportiv2 is None:
+                finala.sportiv2 = castigator
+                finala.save()
+                logger.info(f"Câștigător {castigator} adăugat în finala existentă ca sportiv2")
+            return finala
+        else:
+            # Creăm finala nouă
+            finala = Meci.objects.create(
+                competitie=meci_curent.competitie,
+                categorie=meci_curent.categorie,
+                sportiv1=castigator,
+                runda='Finala',
+                pozitie_in_bracket=1,
+                pozitie_in_runda=1
+            )
+            logger.info(f"Finala creată cu {castigator}")
+            return finala
+    
+    def _gaseste_sau_creeaza_meci_loc3(self, meci_curent, pierzator):
+        """
+        Găsește meciul pentru locul 3 sau îl creează dacă nu există.
+        """
+        # Căutăm meciul pentru locul 3
+        meci_loc3 = Meci.objects.filter(
+            competitie=meci_curent.competitie,
+            categorie=meci_curent.categorie,
+            runda='Locul 3'
+        ).first()
         
-        # Puncte default
-        return 10 if este_castigator else 5
+        if meci_loc3:
+            # Adăugăm pierzătorul în prima poziție liberă
+            if meci_loc3.sportiv1 is None:
+                meci_loc3.sportiv1 = pierzator
+                meci_loc3.save()
+                logger.info(f"Pierzător {pierzator} adăugat în meciul pentru locul 3 ca sportiv1")
+            elif meci_loc3.sportiv2 is None:
+                meci_loc3.sportiv2 = pierzator
+                meci_loc3.save()
+                logger.info(f"Pierzător {pierzator} adăugat în meciul pentru locul 3 ca sportiv2")
+            return meci_loc3
+        else:
+            # Creăm meciul pentru locul 3
+            meci_loc3 = Meci.objects.create(
+                competitie=meci_curent.competitie,
+                categorie=meci_curent.categorie,
+                sportiv1=pierzator,
+                runda='Locul 3',
+                pozitie_in_bracket=1,
+                pozitie_in_runda=1
+            )
+            logger.info(f"Meci pentru locul 3 creat cu {pierzator}")
+            return meci_loc3
+    
+    def _actualizeaza_clasament_universal(self, meci):
+        """
+        Actualizează clasamentul în funcție de tipul de turneu:
+        - Turnee de 2 persoane (best of 3): după finalizarea tuturor meciurilor
+        - Turnee de 3 persoane (round robin): după finalizarea tuturor meciurilor
+        - Turnee de 4+ persoane (knockout): după finală și locul 3
+        """
+        try:
+            # Identificăm tipul de turneu pe baza meciurilor existente
+            toate_meciurile = Meci.objects.filter(
+                competitie=meci.competitie,
+                categorie=meci.categorie
+            )
+            
+            # Verificăm dacă există runde specifice pentru turnee mari
+            are_finala = toate_meciurile.filter(runda='Finala').exists()
+            are_semifinale = toate_meciurile.filter(runda__icontains='Semifinala').exists()
+            
+            # Numărăm meciurile cu structură specifică
+            meciuri_numerotate = toate_meciurile.filter(
+                runda__icontains='Meci 1'
+            ) | toate_meciurile.filter(
+                runda__icontains='Meci 2'
+            ) | toate_meciurile.filter(
+                runda__icontains='Meci 3'
+            )
+            
+            print(f"Număr meciuri numerotate: {meciuri_numerotate.count()}")
+            if meciuri_numerotate.count() == 3:
+                # Turneu de 2-3 persoane
+                self._actualizeaza_clasament_mic_turneu(meci)
+            elif are_finala or are_semifinale:
+                # Turneu de 4+ persoane - folosim logica existentă doar pentru finale
+                if any(keyword in meci.runda.lower() for keyword in ['finala', 'locul 3']):
+                    self._actualizeaza_clasament_proba(meci)
+            
+        except Exception as e:
+            logger.error(f"Eroare la actualizarea clasamentului universal: {e}")
+    
+    def _actualizeaza_clasament_mic_turneu(self, meci):
+        """
+        Actualizează clasamentul pentru turneele cu 2-3 persoane.
+        """
+        try:
+            print(f"Actualizare clasament mic turneu pentru {meci}")
+            # Obținem toate meciurile din această categorie
+            toate_meciurile = Meci.objects.filter(
+                competitie=meci.competitie,
+                categorie=meci.categorie,
+            )
+            print(f"Număr meciuri: {toate_meciurile.count()}")
+            
+            # Verificăm dacă toate meciurile sunt finalizate
+            meciuri_finalizate = toate_meciurile.filter(castigator__isnull=False)
+            if meciuri_finalizate.count() != toate_meciurile.count():
+                logger.info(f"Nu toate meciurile sunt finalizate în categoria {meci.categorie}")
+                return
+            
+            # Identificăm toți sportivii participanți
+            sportivi = set()
+            for m in toate_meciurile:
+                if m.sportiv1:
+                    sportivi.add(m.sportiv1) 
+                if m.sportiv2:
+                    sportivi.add(m.sportiv2)
+            
+            sportivi = list(sportivi)
+            
+            # Ștergem clasamentul existent
+            ClasamentProba.objects.filter(
+                competitie=meci.competitie,
+                categorie=meci.categorie
+            ).delete()
+            
+            if len(sportivi) == 2:
+                # Turneu de 2 persoane - best of 3
+                self._clasament_2_persoane(meci, sportivi, meciuri_finalizate)
+            elif len(sportivi) == 3:
+                # Turneu de 3 persoane - round robin
+                self._clasament_3_persoane(meci, sportivi, meciuri_finalizate)
+            
+            logger.info(f"Clasament actualizat pentru turneu mic în categoria {meci.categorie}")
+            
+        except Exception as e:
+            logger.error(f"Eroare la actualizarea clasamentului mic turneu: {e}")
+    
+    def _clasament_2_persoane(self, meci, sportivi, meciuri_finalizate):
+        """
+        Calculează clasamentul pentru turneu de 2 persoane (best of 3).
+        """
+        # Numărăm câștigurile pentru fiecare sportiv
+        castiguri = {}
+        for sportiv in sportivi:
+            castiguri[sportiv] = meciuri_finalizate.filter(castigator=sportiv).count()
+        
+        # Sortăm după numărul de câștiguri
+        clasament = sorted(sportivi, key=lambda s: castiguri[s], reverse=True)
+        
+        # Creăm clasamentul
+        for pozitie, sportiv in enumerate(clasament, 1):
+            ClasamentProba.objects.create(
+                competitie=meci.competitie,
+                categorie=meci.categorie,
+                sportiv=sportiv,
+                puncte=pozitie
+            )
+        
+        logger.info(f"Clasament 2 persoane: {[(str(s), castiguri[s]) for s in clasament]}")
+    
+    def _clasament_3_persoane(self, meci, sportivi, meciuri_finalizate):
+        """
+        Calculează clasamentul pentru turneu de 3 persoane (round robin).
+        """
+        # Calculăm statisticile pentru fiecare sportiv
+        stats = {}
+        for sportiv in sportivi:
+            stats[sportiv] = {
+                'victorii': 0,
+                'puncte_marcate': 0,
+                'puncte_primite': 0,
+                'diferenta': 0
+            }
+        
+        # Parcurgem toate meciurile pentru a calcula statisticile
+        for m in meciuri_finalizate:
+            if m.sportiv1 and m.sportiv2 and m.castigator:
+                # Actualizăm statisticile pentru câștigător
+                stats[m.castigator]['victorii'] += 1
+                
+                # Actualizăm punctele
+                stats[m.sportiv1]['puncte_marcate'] += m.scor1 or 0
+                stats[m.sportiv1]['puncte_primite'] += m.scor2 or 0
+                stats[m.sportiv2]['puncte_marcate'] += m.scor2 or 0
+                stats[m.sportiv2]['puncte_primite'] += m.scor1 or 0
+        
+        # Calculăm diferența de puncte
+        for sportiv in sportivi:
+            stats[sportiv]['diferenta'] = (
+                stats[sportiv]['puncte_marcate'] - stats[sportiv]['puncte_primite']
+            )
+        
+        # Sortăm sportivii:
+        # 1. După numărul de victorii (descrescător)
+        # 2. După diferența de puncte (descrescător)  
+        # 3. După punctele marcate (descrescător)
+        clasament = sorted(
+            sportivi,
+            key=lambda s: (
+                stats[s]['victorii'],
+                stats[s]['diferenta'], 
+                stats[s]['puncte_marcate']
+            ),
+            reverse=True
+        )
+        
+        # Creăm clasamentul
+        for pozitie, sportiv in enumerate(clasament, 1):
+            ClasamentProba.objects.create(
+                competitie=meci.competitie,
+                categorie=meci.categorie,
+                sportiv=sportiv,
+                puncte=pozitie
+            )
+        
+        logger.info(f"Clasament 3 persoane: {[(str(s), stats[s]) for s in clasament]}")
+    
+    def _actualizeaza_clasament_proba(self, meci):
+        """
+        Actualizează clasamentul pe probă după finalizarea finalei sau meciului pentru locul 3.
+        (Funcția originală pentru turnee de 4+ persoane)
+        """
+        try:
+            # Găsim toate meciurile relevante pentru clasament
+            finala = Meci.objects.filter(
+                competitie=meci.competitie,
+                categorie=meci.categorie,
+                runda='Finala',
+                castigator__isnull=False
+            ).first()
+            
+            meci_loc3 = Meci.objects.filter(
+                competitie=meci.competitie,
+                categorie=meci.categorie,
+                runda='Locul 3',
+                castigator__isnull=False
+            ).first()
+            
+            # Ștergem clasamentul existent pentru această categorie
+            ClasamentProba.objects.filter(
+                competitie=meci.competitie,
+                categorie=meci.categorie
+            ).delete()
+            
+            # Clasificări pe baza rezultatelor
+            if finala:
+                # Locul 1: câștigătorul finalei
+                ClasamentProba.objects.create(
+                    competitie=meci.competitie,
+                    categorie=meci.categorie,
+                    sportiv=finala.castigator,
+                    puncte=1  # Puncte pentru locul 1
+                )
+                
+                # Locul 2: pierzătorul finalei
+                pierzator_finala = finala.sportiv2 if finala.castigator == finala.sportiv1 else finala.sportiv1
+                ClasamentProba.objects.create(
+                    competitie=meci.competitie,
+                    categorie=meci.categorie,
+                    sportiv=pierzator_finala,
+                    puncte=2  # Puncte pentru locul 2
+                )
+            
+            if meci_loc3:
+                # Locul 3: câștigătorul meciului pentru locul 3
+                ClasamentProba.objects.create(
+                    competitie=meci.competitie,
+                    categorie=meci.categorie,
+                    sportiv=meci_loc3.castigator,
+                    puncte=3  # Puncte pentru locul 3
+                )
+                
+                # Locul 4: pierzătorul meciului pentru locul 3
+                pierzator_loc3 = meci_loc3.sportiv2 if meci_loc3.castigator == meci_loc3.sportiv1 else meci_loc3.sportiv1
+                ClasamentProba.objects.create(
+                    competitie=meci.competitie,
+                    categorie=meci.categorie,
+                    sportiv=pierzator_loc3,
+                    puncte=4  # Puncte pentru locul 4
+                )
+            
+            logger.info(f"Clasament actualizat pentru categoria {meci.categorie}")
+            
+        except Exception as e:
+            logger.error(f"Eroare la actualizarea clasamentului: {e}")
     
     def _creeaza_urmatorul_meci(self, meci_curent, castigator):
         """
-        Creează următorul meci în bracket dacă este cazul.
+        Creează următorul meci în bracket pentru rundele non-finale.
         """
         if not castigator:
             return None
@@ -190,8 +495,7 @@ class MeciViewSet(viewsets.ModelViewSet):
             # Determinăm următoarea rundă
             runda_map = {
                 'Optimi': 'Sferturi',
-                'Sferturi': 'Semifinala',
-                'Semifinala': 'Finala'
+                'Sferturi': 'Semifinala'
             }
             
             next_runda = None
@@ -240,33 +544,7 @@ class MeciViewSet(viewsets.ModelViewSet):
                 return None
             
             # Verificăm rundele pentru a determina următoarea
-            if 'semifinala' in meci_curent.runda.lower():
-                # După semifinale vine finala
-                semifinalele = Meci.objects.filter(
-                    competitie=meci_curent.competitie,
-                    categorie=meci_curent.categorie,
-                    runda__icontains='Semifinala',
-                    castigator__isnull=False
-                )
-                
-                if semifinalele.count() == 2:
-                    # Ambele semifinale sunt terminate, creăm finala
-                    castigatori = [s.castigator for s in semifinalele]
-                    
-                    finala = Meci.objects.create(
-                        competitie=meci_curent.competitie,
-                        categorie=meci_curent.categorie,
-                        sportiv1=castigatori[0],
-                        sportiv2=castigatori[1],
-                        runda='Finala',
-                        pozitie_in_bracket=1,
-                        pozitie_in_runda=1
-                    )
-                    
-                    logger.info(f"Finala creată automat: {finala}")
-                    return finala
-            
-            elif 'sferturi' in meci_curent.runda.lower():
+            if 'sferturi' in meci_curent.runda.lower():
                 # După sferturi vin semifinalele
                 sferturile = Meci.objects.filter(
                     competitie=meci_curent.competitie,

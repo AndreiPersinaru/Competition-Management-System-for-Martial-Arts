@@ -183,7 +183,7 @@ export default function CompetitionPage() {
                 <Box
                     sx={{
                         width: isMobile ? "100%" : "60%",
-                        height: isMobile ? "60vh" : "100%",
+                        height: isMobile ? "60vh" : "calc(100vh - 4.5rem)",
                         px: isMobile ? 2 : 0,
                         boxSizing: "border-box",
                     }}

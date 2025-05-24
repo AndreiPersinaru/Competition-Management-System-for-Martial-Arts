@@ -1,5 +1,5 @@
 import { Box, Typography } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 const PublicView = () => {
     const [player1, setPlayer1] = useState({ name: "", club: "" });
@@ -8,21 +8,25 @@ const PublicView = () => {
     const [penalties, setPenalties] = useState([0, 0]);
     const [time, setTime] = useState(300);
     const [metadata, setMetadata] = useState({});
+    const channelRef = useRef(null);
 
     const splitNameAndClub = (fullName) => {
+        if (!fullName) return { name: "", club: "" };
         const match = fullName.match(/^(.+?)\s*\((.+)\)$/);
         if (match) return { name: match[1].trim(), club: match[2].trim() };
         return { name: fullName, club: "" };
     };
 
     useEffect(() => {
-        const channel = new BroadcastChannel("match_channel");
-        channel.onmessage = (event) => {
+        // Create the broadcast channel on component mount
+        channelRef.current = new BroadcastChannel("match_channel");
+
+        const handleMessage = (event) => {
             const { metadata, type, score, penalties, time } = event.data;
-            console.log("Received message:", event.data);
+            console.log("PublicView received message:", event.data);
 
             if (type === "update") {
-                if (metadata) {
+                if (metadata && metadata.teams) {
                     setPlayer1(splitNameAndClub(metadata.teams[0]?.name || ""));
                     setPlayer2(splitNameAndClub(metadata.teams[1]?.name || ""));
                     setMetadata(metadata);
@@ -34,7 +38,27 @@ const PublicView = () => {
             }
         };
 
-        return () => channel.close();
+        channelRef.current.onmessage = handleMessage;
+
+        // Request data from the dashboard when mounted
+        window.addEventListener("load", () => {
+            console.log("PublicView loaded, requesting data");
+            // Send a message to request data (dashboard would need to listen for this)
+            const requestChannel = new BroadcastChannel("match_request_channel");
+            requestChannel.postMessage({ type: "request_data" });
+
+            // Clean up the request channel
+            setTimeout(() => {
+                requestChannel.close();
+            }, 500);
+        });
+
+        return () => {
+            // Clean up the channel when component unmounts
+            if (channelRef.current) {
+                channelRef.current.close();
+            }
+        };
     }, []);
 
     const formatTime = (t) => `${Math.floor(t / 60)}:${(t % 60).toString().padStart(2, "0")}`;
@@ -57,7 +81,7 @@ const PublicView = () => {
     return (
         <Box height="100vh" position="relative">
             <Box height="40vh" position="relative" display="flex" alignItems="center" bgcolor="#198dd2">
-                <Box width="100%" display="flex" flexDirection="column" pl={20} pt={"8vh"} justifyContent="flex-start" height="100%">
+                <Box width="100%" display="flex" flexDirection="column" pl={"5vw"} pt={"8vh"} justifyContent="flex-start" height="100%">
                     <Typography fontSize="4vw" fontWeight="bold">
                         {player1.name}
                     </Typography>
@@ -92,7 +116,7 @@ const PublicView = () => {
             </Box>
 
             <Box height="40vh" position="relative" display="flex" alignItems="center" bgcolor="white">
-                <Box width="100%" display="flex" flexDirection="column" pl={20} pb={"8vh"} justifyContent="flex-end" height="100%">
+                <Box width="100%" display="flex" flexDirection="column" pl={"5vw"} pb={"8vh"} justifyContent="flex-end" height="100%">
                     <Box display="flex" pb={"10vh"}>
                         {renderPenalties(penalties[1])}
                     </Box>

@@ -34,7 +34,7 @@ const MatchDashboard = () => {
     const [score, setScore] = useState([0, 0]);
     const [penalties, setPenalties] = useState([0, 0]);
     const [diffWin, setDiffWin] = useState(true);
-    const [metadata, setMetadata] = useState(null);
+    const [metadata, setMetadata] = useState({});
     const [isFinalizingMatch, setIsFinalizingMatch] = useState(false);
     const [error, setError] = useState(null);
     const channel = useRef(new BroadcastChannel("match_channel"));
@@ -44,6 +44,7 @@ const MatchDashboard = () => {
     const timerEndAudio = useRef(new Audio(timerEndSound));
     const location = useLocation();
     const navigate = useNavigate();
+    const initialLoadRef = useRef(false);
 
     const getTimeByAge = (age) => {
         if (age <= 11) return 120;
@@ -99,8 +100,18 @@ const MatchDashboard = () => {
         penaltiesRef.current = penalties;
     }, [penalties]);
 
+    // Add a new effect to broadcast state once everything is loaded
     useEffect(() => {
-        broadcastState();
+        // Wait for metadata to be loaded and component to be fully mounted
+        if (metadata.teams && !initialLoadRef.current) {
+            // Set a small timeout to ensure all state is properly initialized
+            const timer = setTimeout(() => {
+                broadcastState();
+                initialLoadRef.current = true;
+            }, 300);
+
+            return () => clearTimeout(timer);
+        }
     }, [metadata]);
 
     const playTimerEndSound = () => {
@@ -113,16 +124,26 @@ const MatchDashboard = () => {
     };
 
     const broadcastState = () => {
-        channel.current.postMessage({
-            type: "update",
+        if (!metadata.teams) return;
+        console.log("Broadcasting state to public view:", {
             score: scoreRef.current,
             penalties: penaltiesRef.current,
             time,
             metadata,
         });
+
+        channel.current.postMessage({
+            type: "update",
+            score: scoreRef.current,
+            penalties: penaltiesRef.current,
+            time,
+            running: time > 0,
+            metadata,
+        });
     };
 
     const broadcastUpdate = (newTime) => {
+        if (!metadata.teams) return;
         channel.current.postMessage({
             type: "update",
             score: scoreRef.current,
@@ -209,6 +230,7 @@ const MatchDashboard = () => {
 
     const openPublicScreen = () => {
         window.open("/public-view", "_blank", "width=800,height=600,noopener,noreferrer");
+        // Send data to public view after a short delay to ensure it's ready
         setTimeout(() => {
             broadcastState();
         }, 500);
@@ -347,7 +369,7 @@ const MatchDashboard = () => {
                         +60s
                     </Button>
 
-                    <Grid item>
+                    <Grid xs={12} sm={6} md={4} lg={3}>
                         <TextField
                             label="Timp (s)"
                             type="number"
