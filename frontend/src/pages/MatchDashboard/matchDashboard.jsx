@@ -92,6 +92,7 @@ const MatchDashboard = () => {
         scoreRef.current = score;
         if (diffWin && Math.abs(score[0] - score[1]) >= 10) {
             setRunning(false);
+            playTimerEndSound();
             console.log("Meci oprit din cauza diferentei de 10 puncte");
         }
     }, [score, diffWin]);
@@ -179,7 +180,6 @@ const MatchDashboard = () => {
         setPenalties((prev) => {
             const newPenalties = [...prev];
             newPenalties[player] += 1;
-            playTimerEndSound();
 
             if (newPenalties[player] === 2) handleAddScore(player === 0 ? 1 : 0, 1);
             if (newPenalties[player] === 3) handleAddScore(player === 0 ? 1 : 0, 2);
