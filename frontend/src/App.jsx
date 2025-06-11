@@ -10,6 +10,7 @@ import CompetitionPage from "./pages/CompetitionPage/competitionPage";
 import Competitions from "./pages/Competitions/competitions";
 import MatchDashboard from "./pages/MatchDashboard/matchDashboard";
 import PublicView from "./pages/PublicView/publicView";
+import LivestreamPage from "./pages/LivestreamPage/livestreamPage";
 
 export default function App() {
     return (
@@ -24,6 +25,7 @@ export default function App() {
                     <Route path="/register" element={<Register />} />
                     <Route path="/match-dashboard" element={<MatchDashboard />} />
                     <Route path="/public-view" element={<PublicView />} />
+                    <Route path="/livestream" element={<LivestreamPage />} />
                     <Route
                         path="/create-competition"
                         element={
