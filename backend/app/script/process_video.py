@@ -3,6 +3,7 @@ import mediapipe as mp
 import numpy as np
 import time
 from collections import deque
+import math
 
 mp_hands = mp.solutions.hands
 mp_pose = mp.solutions.pose
@@ -12,9 +13,9 @@ mp_drawing_styles = mp.solutions.drawing_styles
 hands = mp_hands.Hands(max_num_hands=8, min_detection_confidence=0.2, min_tracking_confidence=0.2, model_complexity=1)
 pose = mp_pose.Pose(min_detection_confidence=0.3, min_tracking_confidence=0.3, model_complexity=2)
 
-cap = cv2.VideoCapture("vid5.mp4")
+cap = cv2.VideoCapture(0)
 
-candidate_hand = None
+candidate_arm = None
 gesture_start_time = None
 winner = None
 
@@ -201,72 +202,110 @@ def find_referee_advanced(image):
     
     return best_referee
 
-def detect_raised_hands_improved(image, referee, results_hands, head_y):
-    """Detectare moderată a mâinilor - nu prea permisivă dar nici prea strictă"""
-    if not results_hands.multi_hand_landmarks:
+def calculate_arm_angle(shoulder, elbow, wrist):
+    """Calculează unghiul brațului față de orizontală"""
+    # Vector de la umăr la coate
+    upper_arm = np.array([elbow.x - shoulder.x, elbow.y - shoulder.y])
+    # Vector de la coate la încheietura mâinii
+    forearm = np.array([wrist.x - elbow.x, wrist.y - elbow.y])
+    
+    # Calculăm unghiul total al brațului (de la umăr la încheietura mâinii)
+    full_arm = np.array([wrist.x - shoulder.x, wrist.y - shoulder.y])
+    
+    # Unghiul față de orizontală (în grade)
+    angle_rad = math.atan2(-full_arm[1], full_arm[0])  # -y pentru că y crește în jos
+    angle_deg = math.degrees(angle_rad)
+    
+    # Normalizăm unghiul între -180 și 180
+    if angle_deg > 180:
+        angle_deg -= 360
+    elif angle_deg < -180:
+        angle_deg += 360
+    
+    return angle_deg
+
+def detect_raised_arms(referee):
+    """Detectează brațele ridicate bazându-ne pe poziția landmark-urilor de pose"""
+    if not referee or not referee["pose_landmarks"]:
         return []
     
-    raised_hands = []
-    h, w, _ = image.shape
+    landmarks = referee["pose_landmarks"].landmark
+    raised_arms = []
     
-    # Zone moderate pentru detectare
-    referee_center = referee["center_x"]
-    detection_radius = max(120, min(w * 0.3, 300))  # Rază moderată
+    # Definim landmark-urile necesare
+    left_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER]
+    right_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER]
+    left_elbow = landmarks[mp_pose.PoseLandmark.LEFT_ELBOW]
+    right_elbow = landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW]
+    left_wrist = landmarks[mp_pose.PoseLandmark.LEFT_WRIST]
+    right_wrist = landmarks[mp_pose.PoseLandmark.RIGHT_WRIST]
     
-    # Calculăm zona arbitrului
-    ref_bbox = referee["bbox"]
-    ref_width = ref_bbox[2] - ref_bbox[0]
-    ref_height = ref_bbox[3] - ref_bbox[1]
-    
-    for hand_landmarks, handedness in zip(results_hands.multi_hand_landmarks, results_hands.multi_handedness):
-        wrist = hand_landmarks.landmark[0]
-        wrist_x = wrist.x * w
-        wrist_y = wrist.y * h
+    # Verificăm brațul stâng
+    if (left_shoulder.visibility > 0.5 and left_elbow.visibility > 0.5 and left_wrist.visibility > 0.5):
+        left_angle = calculate_arm_angle(left_shoulder, left_elbow, left_wrist)
         
-        # Verificări moderate
-        conditions = [
-            # În apropierea arbitrului - rază moderată
-            abs(wrist_x - referee_center) < detection_radius,
+        # Condiții pentru braț ridicat (ajustabile)
+        conditions_left = [
+            # Unghiul să fie în intervalul pentru braț ridicat (între 45 și 135 grade)
+            45 <= left_angle <= 135,
             
-            # În partea de sus a imaginii - moderat
-            wrist.y < 0.7,  # Nu în partea de jos
+            # Încheietura mâinii să fie deasupra umărului
+            left_wrist.y < left_shoulder.y,
             
-            # Deasupra mijlocului corpului arbitrului
-            wrist_y < ref_bbox[1] + ref_height * 0.6,  # 60% din înălțimea arbitrului
+            # Cotul să fie deasupra sau la același nivel cu umărul
+            left_elbow.y <= left_shoulder.y + 0.1,  # Marjă mică pentru toleranță
             
-            # Mâna în zona vizibilă și relevantă
-            wrist.x > 0.05 and wrist.x < 0.95,  # Nu pe marginile extreme
-            
-            # Dacă head_y există, să fie deasupra acestuia cu o marjă
-            head_y is None or wrist_y < head_y + 100,
+            # Verificare suplimentară: încheietura să fie semnificativ deasupra umărului
+            (left_shoulder.y - left_wrist.y) > 0.05,  # Diferență minimă de 5% din înălțimea imaginii
         ]
         
-        # Condiții suplimentare moderate
-        extra_conditions = [
-            # Mâna să fie vizibilă decent
-            wrist.visibility > 0.4 if hasattr(wrist, 'visibility') else True,
+        # Condiții mai relaxate pentru detectare la distanță
+        relaxed_conditions_left = [
+            # Unghiul mai permisiv
+            30 <= left_angle <= 150,
             
-            # Nu în partea foarte de jos a frame-ului
-            wrist.y < 0.8,
+            # Încheietura mâinii să fie deasupra umărului (condiție principală)
+            left_wrist.y < left_shoulder.y,
+            
+            # Cotul să nu fie prea jos
+            left_elbow.y < left_shoulder.y + 0.15,
         ]
         
-        # Acceptăm dacă cel puțin 3 condiții din prima listă sunt îndeplinite
-        basic_conditions_met = sum(conditions) >= 3
-        
-        # SAU dacă cel puțin 2 condiții de bază + toate extra condițiile
-        relaxed_conditions_met = sum(conditions) >= 2 and all(extra_conditions)
-        
-        if basic_conditions_met or relaxed_conditions_met:
-            hand_label = handedness.classification[0].label
-            confidence = handedness.classification[0].score
-            
-            if confidence > 0.5:  # Confidență moderată
-                raised_hands.append(hand_label)
+        if sum(conditions_left) >= 3 or sum(relaxed_conditions_left) >= 2:
+            raised_arms.append("Left")
     
-    return raised_hands
+    # Verificăm brațul drept
+    if (right_shoulder.visibility > 0.5 and right_elbow.visibility > 0.5 and right_wrist.visibility > 0.5):
+        right_angle = calculate_arm_angle(right_shoulder, right_elbow, right_wrist)
+        
+        # Pentru brațul drept, unghiul va fi între 45 și 135 grade (oglindă)
+        conditions_right = [
+            # Unghiul să fie în intervalul pentru braț ridicat
+            45 <= right_angle <= 135,
+            
+            # Încheietura mâinii să fie deasupra umărului
+            right_wrist.y < right_shoulder.y,
+            
+            # Cotul să fie deasupra sau la același nivel cu umărul
+            right_elbow.y <= right_shoulder.y + 0.1,
+            
+            # Verificare suplimentară
+            (right_shoulder.y - right_wrist.y) > 0.05,
+        ]
+        
+        relaxed_conditions_right = [
+            30 <= right_angle <= 150,
+            right_wrist.y < right_shoulder.y,
+            right_elbow.y < right_shoulder.y + 0.15,
+        ]
+        
+        if sum(conditions_right) >= 3 or sum(relaxed_conditions_right) >= 2:
+            raised_arms.append("Right")
+    
+    return raised_arms
 
-def draw_visual_feedback(image, referee, raised_hands, candidate_hand, gesture_start_time, winner, results_hands, head_y):
-    """Funcție pentru tot feedback-ul vizual"""
+def draw_visual_feedback(image, referee, raised_arms, candidate_arm, gesture_start_time, winner):
+    """Funcție pentru tot feedback-ul vizual cu informații despre brațe"""
     if referee is None:
         cv2.putText(image, "Cautam arbitrul...", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
         return
@@ -287,47 +326,72 @@ def draw_visual_feedback(image, referee, raised_hands, candidate_hand, gesture_s
             referee["pose_landmarks"],
             mp_pose.POSE_CONNECTIONS,
             mp_drawing_styles.get_default_pose_landmarks_style())
+        
+        # Desenăm informații despre unghiurile brațelor
+        landmarks = referee["pose_landmarks"].landmark
+        h, w, _ = image.shape
+        
+        # Informații pentru brațul stâng
+        if (landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER].visibility > 0.5 and 
+            landmarks[mp_pose.PoseLandmark.LEFT_ELBOW].visibility > 0.5 and 
+            landmarks[mp_pose.PoseLandmark.LEFT_WRIST].visibility > 0.5):
+            
+            left_angle = calculate_arm_angle(
+                landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER],
+                landmarks[mp_pose.PoseLandmark.LEFT_ELBOW],
+                landmarks[mp_pose.PoseLandmark.LEFT_WRIST]
+            )
+            
+            wrist_pos = landmarks[mp_pose.PoseLandmark.LEFT_WRIST]
+            cv2.putText(image, f"L: {left_angle:.1f}°", 
+                       (int(wrist_pos.x * w), int(wrist_pos.y * h - 10)),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+        
+        # Informații pentru brațul drept
+        if (landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER].visibility > 0.5 and 
+            landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW].visibility > 0.5 and 
+            landmarks[mp_pose.PoseLandmark.RIGHT_WRIST].visibility > 0.5):
+            
+            right_angle = calculate_arm_angle(
+                landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER],
+                landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW],
+                landmarks[mp_pose.PoseLandmark.RIGHT_WRIST]
+            )
+            
+            wrist_pos = landmarks[mp_pose.PoseLandmark.RIGHT_WRIST]
+            cv2.putText(image, f"R: {right_angle:.1f}°", 
+                       (int(wrist_pos.x * w), int(wrist_pos.y * h - 10)),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
     
-    # Desenăm mâinile detectate
-    if results_hands.multi_hand_landmarks:
-        for hand_landmarks, handedness in zip(results_hands.multi_hand_landmarks, results_hands.multi_handedness):
-            hand_label = handedness.classification[0].label
-            wrist = hand_landmarks.landmark[0]
-            wrist_x = wrist.x * image.shape[1]
-            wrist_y = wrist.y * image.shape[0]
-            
-            mp_drawing.draw_landmarks(
-                image,
-                hand_landmarks,
-                mp_hands.HAND_CONNECTIONS,
-                mp_drawing_styles.get_default_hand_landmarks_style(),
-                mp_drawing_styles.get_default_hand_connections_style())
-            
-            # Marcăm mâinile ridicate
-            if hand_label in raised_hands:
-                cv2.putText(image, f"{hand_label} RIDICATA", 
-                           (int(wrist_x), int(wrist_y-20)), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-                cv2.circle(image, (int(wrist_x), int(wrist_y)), 15, (0, 255, 255), 3)
+    # Evidențiem brațele ridicate
+    if raised_arms:
+        for arm in raised_arms:
+            color = (0, 255, 255)  # Galben pentru brațe ridicate
+            if arm == "Left":
+                cv2.putText(image, "BRAT STANG RIDICAT", (10, 160), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            else:
+                cv2.putText(image, "BRAT DREPT RIDICAT", (10, 180), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
     
     # Afișăm statusul
     if winner:
         status_text = f"Winner: {winner}!"
         cv2.putText(image, status_text, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 3)
     else:
-        status_text = "Ridica o mana pentru a decide castigatorul"
+        status_text = "Ridica un brat pentru a decide castigatorul"
         cv2.putText(image, status_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
         
-        # Debug info pentru mâinile detectate
-        if raised_hands:
-            hands_text = f"Maini detectate: {', '.join(raised_hands)}"
-            cv2.putText(image, hands_text, (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 255), 2)
+        # Debug info pentru brațele detectate
+        if raised_arms:
+            arms_text = f"Brate detectate: {', '.join(raised_arms)}"
+            cv2.putText(image, arms_text, (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 255), 2)
         
-        if candidate_hand:
+        if candidate_arm:
             elapsed_time = time.time() - gesture_start_time
             countdown = max(0, 0.5 - elapsed_time)
             cv2.putText(image, f"Timp ramas: {countdown:.1f}s", (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            cv2.putText(image, f"Detectat: {candidate_hand}", (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+            cv2.putText(image, f"Detectat: {candidate_arm}", (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
 
 # Bucla principală
 frame_count = 0
@@ -347,58 +411,39 @@ while cap.isOpened():
     
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image_height, image_width, _ = image.shape
-
-    results_hands = hands.process(image_rgb)
     
     # Detectăm arbitrul folosind metoda îmbunătățită
     referee = find_referee_advanced(image)
     
     if referee is None:
         if show_visual:
-            draw_visual_feedback(image, None, [], candidate_hand, gesture_start_time, winner, results_hands, None)
-            cv2.imshow('Hand Tracking', image)
+            draw_visual_feedback(image, None, [], candidate_arm, gesture_start_time, winner)
+            cv2.imshow('Arm Tracking', image)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         continue
     
-    # Calculăm head_y pentru arbitru
-    head_y = None
-    if referee["pose_landmarks"]:
-        landmarks = referee["pose_landmarks"].landmark
-        nose = landmarks[mp_pose.PoseLandmark.NOSE]
-        left_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER]
-        right_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER]
-        
-        head_y = min(
-            nose.y * image_height if nose.visibility > 0.5 else float('inf'),
-            left_shoulder.y * image_height if left_shoulder.visibility > 0.5 else float('inf'),
-            right_shoulder.y * image_height if right_shoulder.visibility > 0.5 else float('inf')
-        )
-        
-        if head_y == float('inf'):
-            head_y = referee["center_y"]
+    # Detectăm brațele ridicate bazându-ne pe pose landmarks
+    raised_arms = detect_raised_arms(referee)
     
-    # Detectăm mâinile ridicate
-    raised_hands = detect_raised_hands_improved(image, referee, results_hands, head_y)
-    
-    # Logica pentru determinarea câștigătorului
+    # Logica pentru determinarea câștigătorului (modificată pentru brațe)
     if winner is None:
-        if len(raised_hands) == 1:
-            current_hand = raised_hands[0]
-            if candidate_hand == current_hand:
-                if time.time() - gesture_start_time >= 0.5:  # 0.5 secunde
-                    winner = "Red Corner" if current_hand == "Right" else "Blue Corner"
+        if len(raised_arms) == 1:
+            current_arm = raised_arms[0]
+            if candidate_arm == current_arm:
+                if time.time() - gesture_start_time >= 0.2:  # 0.5 secunde
+                    winner = "Red Corner" if current_arm == "Right" else "Blue Corner"
             else:
-                candidate_hand = current_hand
+                candidate_arm = current_arm
                 gesture_start_time = time.time()
         else:
-            candidate_hand = None
+            candidate_arm = None
             gesture_start_time = None
     
-    # Partea vizuală (poate fi comentată)
+    # Partea vizuală
     if show_visual:
-        draw_visual_feedback(image, referee, raised_hands, candidate_hand, gesture_start_time, winner, results_hands, head_y)
-        cv2.imshow('Hand Tracking', image)
+        draw_visual_feedback(image, referee, raised_arms, candidate_arm, gesture_start_time, winner)
+        cv2.imshow('Arm Tracking', image)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 

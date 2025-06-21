@@ -155,7 +155,7 @@ class ExportParticipantsView(APIView):
 # ========== UPLOAD PARTICIPANTS ==========
     
 class UploadParticipantsView(APIView):
-    permission_classes = []
+    permission_classes = [IsAuthenticated]
 
     def post(self, request, competition_id):
         file_obj = request.FILES.get("file")
