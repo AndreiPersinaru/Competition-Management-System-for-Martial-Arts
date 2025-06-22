@@ -58,11 +58,10 @@ def genereaza_bracket_si_meciuri(inscrieri, competitie):
             )
             
         elif len(sportivi) >= 4:
-            # Bracket standard cu eliminare
             numar_spoturi = 8 if len(sportivi) > 4 else 4
             locuri = list(range(1, numar_spoturi + 1))
 
-            # Grupare sportivi după club pentru evitarea întâlnirilor timpurii
+            # Grupare sportivi după club 
             sportivi_per_club = defaultdict(list)
             for s in sportivi:
                 sportivi_per_club[s.club.id].append(s)
@@ -73,7 +72,7 @@ def genereaza_bracket_si_meciuri(inscrieri, competitie):
             sportivi_random = sportivi.copy()
             random.shuffle(sportivi_random)
 
-            # Distribuim sportivii în pozițiile bracket-ului
+            # Distribuire sortivi în poziții
             idx_poz = 0
             while sportivi_random:
                 for club_id, lista_sportivi in cluburi_ordonate:

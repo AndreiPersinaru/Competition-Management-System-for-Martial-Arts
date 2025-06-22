@@ -6,6 +6,7 @@ from .views.meci_views import MeciViewSet
 from .views.categorie_views import CategorieViewSet
 from .views.sportiv_views import SportivViewSet
 from .views.proba_views import ProbaViewSet
+from .views.recording_views import StartRecordingView, StopRecordingView, StartLivestreamView, StopLivestreamView
 from rest_framework_simplejwt.views import TokenRefreshView, TokenObtainPairView
 
 router = DefaultRouter()
@@ -30,4 +31,9 @@ urlpatterns = [
     path("competitii/<int:competition_id>/upload-participants/", UploadParticipantsView.as_view()),
     path("competitii/<int:competition_id>/ranking/download/", DownloadRankingView.as_view(), name="download_ranking"),
 
+    # Recording
+    path('start-recording/', StartRecordingView.as_view(), name='start_recording'),
+    path('stop-recording/', StopRecordingView.as_view(), name='stop_recording'),
+    path('start-livestream/', StartLivestreamView.as_view(), name='start_livestream'),
+    path('stop-livestream/', StopLivestreamView.as_view(), name='stop_livestream'),
 ]

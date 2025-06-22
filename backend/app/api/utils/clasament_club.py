@@ -38,22 +38,14 @@ class ClasamentClubCalculator:
             )
             categorii_clasamente[categorie_key].append(clasament)
         
-        # Pentru fiecare categorie, calculăm punctele
+        # Calcul puncte pentru fiecare categorie
         for categorie_key, clasamente_categorie in categorii_clasamente.items():
-            # Sortăm după poziție (puncte în ClasamentProba reprezintă poziția)
             clasamente_categorie.sort(key=lambda x: x.puncte)
-            
             nr_sportivi = len(clasamente_categorie)
             
-            if nr_sportivi == 0:
+            if nr_sportivi <= 1:
                 continue
-            elif nr_sportivi == 1:
-                # Un singur sportiv - 0 puncte
-                pass
             elif nr_sportivi == 2:
-                # Doi sportivi
-                # Locul 1: 3 puncte
-                # Locul 2: 1 punct
                 for i, clasament in enumerate(clasamente_categorie):
                     if clasament.sportiv.club:
                         if i == 0:  # Locul 1
@@ -61,10 +53,6 @@ class ClasamentClubCalculator:
                         elif i == 1:  # Locul 2
                             cluburi_puncte[clasament.sportiv.club] += 1
             else:
-                # Trei sau mai mulți sportivi
-                # Locul 1: 5 puncte
-                # Locul 2: 3 puncte
-                # Locul 3: 1 punct
                 for i, clasament in enumerate(clasamente_categorie):
                     if clasament.sportiv.club:
                         if i == 0:  # Locul 1
@@ -74,7 +62,7 @@ class ClasamentClubCalculator:
                         elif i == 2:  # Locul 3
                             cluburi_puncte[clasament.sportiv.club] += 1
         
-        # Sortăm cluburile după puncte (descrescător)
+        # Sortare cluburi după puncte (descrescător)
         cluburi_sortate = sorted(
             cluburi_puncte.items(),
             key=lambda x: x[1],

@@ -8,6 +8,9 @@ import Navbar from "../../components/sections/Navbar/navbar";
 import Footer from "../../components/sections/Footer/footer";
 import { useTheme } from "@mui/material/styles";
 import API_URL from "../../config";
+import DeleteIcon from "@mui/icons-material/Delete";
+import IconButton from "@mui/material/IconButton";
+import Stack from "@mui/material/Stack";
 
 export default function Competitions() {
     const [competitions, setCompetitions] = useState([]);
@@ -100,9 +103,20 @@ export default function Competitions() {
                                                 <Chip label={event.location} color="success" variant="outlined" icon={<LocationOn fontSize="small" />} />
                                             </Box>
 
-                                            <Button fullWidth variant="contained" sx={{ mt: 3 }} component={Link} to={`/competition/${event.id}`}>
-                                                Detalii
-                                            </Button>
+                                            <Box sx={{ mt: 3, display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 1 }}>
+                                                <Button variant="contained" component={Link} to={`/competition/${event.id}`}>
+                                                    Detalii
+                                                </Button>
+                                                <Button variant="contained" color="info" component={Link} to={`/competition/${event.id}/matches`}>
+                                                    Meciuri
+                                                </Button>
+                                                <Button variant="contained" color="success" component={Link} to={`/competition/${event.id}/edit`}>
+                                                    Editează
+                                                </Button>
+                                                <IconButton color="error" onClick={() => handleDelete(event.id)}>
+                                                    <DeleteIcon />
+                                                </IconButton>
+                                            </Box>
                                         </CardContent>
                                     </Card>
                                 </Grid>

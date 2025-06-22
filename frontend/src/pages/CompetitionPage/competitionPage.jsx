@@ -6,6 +6,7 @@ import Navbar from "../../components/sections/Navbar/navbar";
 import Footer from "../../components/sections/Footer/footer";
 import { ArrowRight, CalendarToday, LocationOn, SportsMartialArts } from "@mui/icons-material";
 import Excel from "../../components/sections/Excel/excel";
+import Livestream from "../../components/sections/Livestream/livestream";
 import API_URL from "../../config";
 
 export default function CompetitionPage() {
@@ -202,6 +203,7 @@ export default function CompetitionPage() {
                     />
                 </Box>
             </Box>
+            <Livestream />
             <Excel />
             <Footer />
         </>

@@ -153,10 +153,6 @@ class ClasamentProbaCalculator:
         return clasament
     
     def _calculeaza_clasament_round_robin(self):
-        """
-        Pentru Round Robin: se numără victoriile, în caz de egalitate
-        se folosește diferența de puncte.
-        """
         victorii_per_sportiv = defaultdict(int)
         diferenta_puncte_per_sportiv = defaultdict(int)
         sportivi_participanti = set()
@@ -165,10 +161,8 @@ class ClasamentProbaCalculator:
             sportivi_participanti.add(meci.sportiv1)
             sportivi_participanti.add(meci.sportiv2)
             
-            # Numărăm victoria
             victorii_per_sportiv[meci.castigator] += 1
             
-            # Calculăm diferența de puncte
             if meci.castigator == meci.sportiv1:
                 diferenta_puncte_per_sportiv[meci.sportiv1] += (meci.scor1 - meci.scor2)
                 diferenta_puncte_per_sportiv[meci.sportiv2] += (meci.scor2 - meci.scor1)
@@ -176,7 +170,7 @@ class ClasamentProbaCalculator:
                 diferenta_puncte_per_sportiv[meci.sportiv2] += (meci.scor2 - meci.scor1)
                 diferenta_puncte_per_sportiv[meci.sportiv1] += (meci.scor1 - meci.scor2)
         
-        # Sortăm după numărul de victorii, apoi după diferența de puncte
+        # Sortare după numărul de victorii, apoi după diferența de puncte
         sportivi_sortati = sorted(
             sportivi_participanti,
             key=lambda s: (victorii_per_sportiv[s], diferenta_puncte_per_sportiv[s]),

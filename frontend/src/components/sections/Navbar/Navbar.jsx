@@ -20,9 +20,13 @@ const Navbar = () => {
     }, [isMobile]);
 
     const navigationItems = [
-        { label: "Organizare", path: "/brackets" },
+        // { label: "Organizare", path: "/brackets" },
         { label: "Competitii", path: "/competitions" },
-        {label: "Creare competitie", path: "/create-competition"}
+        { label: "Despre", path: "/about" },
+        { label: "Contact", path: "/contact" },
+        { label: "Creare competitie", path: "/create-competition" },
+        // { label: "Devino organizator", path: "/register" },
+        { label: "Deconectare", path: "/", onClick: logout }, 
     ];
 
     return (
@@ -30,7 +34,7 @@ const Navbar = () => {
             <Toolbar sx={{ flexDirection: "column" }}>
                 <Box width="100%" display="flex" justifyContent="space-between" alignItems="center" height="4.5rem">
                     <Typography variant={isMobile ? "h4" : "h3"} ml={{ xs: 1, md: 4 }} onClick={() => navigate("/")} sx={{ cursor: "pointer" }}>
-                        Pangration
+                        MatStats
                     </Typography>
 
                     {!isMobile && (

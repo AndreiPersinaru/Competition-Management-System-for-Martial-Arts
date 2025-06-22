@@ -531,6 +531,19 @@ const MatchDashboard = () => {
         </Box>
     );
 
+    const startRecording = async () => {
+        await axios.post(`${API_URL}/start-recording/`);
+    };
+    const stopRecording = async () => {
+        await axios.post(`${API_URL}/stop-recording/`);
+    };
+    const startLiveStream = async () => {
+        await axios.post(`${API_URL}/start-livestream/`);
+    }
+    const stopLiveStream = async () => {
+        await axios.post(`${API_URL}/stop-livestream/`);
+    };
+
     return (
         <>
             <Navbar />
@@ -555,6 +568,18 @@ const MatchDashboard = () => {
 
                 {renderSettings()}
                 {renderActionButtons()}
+                {/* <Button variant="outlined" onClick={startRecording} sx={{ mt: 2, mr: 2 }}>
+                    Start
+                </Button>
+                <Button variant="outlined" onClick={stopRecording} sx={{ mt: 2 }}>
+                    Stop
+                </Button>
+                <Button variant="outlined" onClick={startLiveStream} sx={{ mt: 2, mr: 2 }}>
+                    Start Live Stream
+                </Button>
+                <Button variant="outlined" onClick={stopLiveStream} sx={{ mt: 2 }}>
+                    Stop Live Stream
+                </Button> */}
             </Box>
         </>
     );

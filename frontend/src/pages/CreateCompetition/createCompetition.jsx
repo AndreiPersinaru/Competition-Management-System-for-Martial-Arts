@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Box, Button, Container, Paper, TextField, Typography, Alert, FormGroup, FormControlLabel, Checkbox } from "@mui/material";
+import { Box, Button, Container, Paper, TextField, Typography, Alert, IconButton, List, ListItem, ListItemText } from "@mui/material";
+import { Delete, Edit } from "@mui/icons-material";
 import backgroundImage from "../../assets/pictures/home-background.jpg";
 import Navbar from "../../components/sections/Navbar/navbar";
 import axios from "axios";
@@ -10,8 +11,6 @@ const getEmbedLink = (link) => {
     const match = link.match(/src="([^"]+)"/);
     return match ? match[1] : "";
 };
-
-const availableProbes = ["Palaismata", "Polydamas", "Kato", "Imiepafis", "Pleris Agon", "Pix Lax"];
 
 const CreateCompetition = () => {
     const accessToken = localStorage.getItem("access_token");
@@ -24,23 +23,47 @@ const CreateCompetition = () => {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
     const [selectedProbes, setSelectedProbes] = useState([]);
+    const [newProbe, setNewProbe] = useState("");
+    const [editingIndex, setEditingIndex] = useState(-1);
+    const [editingValue, setEditingValue] = useState("");
     const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split("T")[0];
 
-    const handleProbeChange = (probe) => {
-        setSelectedProbes((prev) => {
-            const isProbeSelected = prev.some((p) => p.startsWith(probe));
+    const handleAddProbe = (e) => {
+        if (e.key === 'Enter' && newProbe.trim()) {
+            e.preventDefault();
+            setSelectedProbes([...selectedProbes, newProbe.trim()]);
+            setNewProbe("");
+        }
+    };
 
-            if (["Palaismata", "Polydamas"].includes(probe)) {
-                if (!isProbeSelected) {
-                    const derivedProbes = [`${probe} Masculin`, `${probe} Mixt`, `${probe} Feminin`];
-                    return [...prev, ...derivedProbes];
-                } else {
-                    return prev.filter((p) => !p.startsWith(probe));
-                }
-            }
+    const handleDeleteProbe = (index) => {
+        setSelectedProbes(selectedProbes.filter((_, i) => i !== index));
+    };
 
-            return prev.includes(probe) ? prev.filter((p) => p !== probe) : [...prev, probe];
-        });
+    const handleEditProbe = (index) => {
+        setEditingIndex(index);
+        setEditingValue(selectedProbes[index]);
+    };
+
+    const handleSaveEdit = (e) => {
+        if (e.key === 'Enter' && editingValue.trim()) {
+            e.preventDefault();
+            const updatedProbes = [...selectedProbes];
+            updatedProbes[editingIndex] = editingValue.trim();
+            setSelectedProbes(updatedProbes);
+            setEditingIndex(-1);
+            setEditingValue("");
+        }
+    };
+
+    const handleBlurEdit = () => {
+        if (editingValue.trim()) {
+            const updatedProbes = [...selectedProbes];
+            updatedProbes[editingIndex] = editingValue.trim();
+            setSelectedProbes(updatedProbes);
+        }
+        setEditingIndex(-1);
+        setEditingValue("");
     };
 
     const handleSubmit = async (e) => {
@@ -150,14 +173,43 @@ const CreateCompetition = () => {
                             <TextField fullWidth margin="normal" label="Adresă" value={adresa} onChange={(e) => setAdresa(e.target.value)} required />
                             <TextField fullWidth margin="normal" label="Link Google Maps" value={mapLink} onChange={(e) => setMapLink(e.target.value)} />
 
-                            <Typography variant="subtitle1" sx={{ mt: 2 }}>
-                                Selectează probele:
-                            </Typography>
-                            <FormGroup>
-                                {availableProbes.map((probe) => (
-                                    <FormControlLabel key={probe} control={<Checkbox checked={selectedProbes.some((p) => p.startsWith(probe))} onChange={() => handleProbeChange(probe)} />} label={probe} />
-                                ))}
-                            </FormGroup>
+                            <TextField 
+                                fullWidth 
+                                margin="normal" 
+                                label="Adauga proba" 
+                                value={newProbe} 
+                                onChange={(e) => setNewProbe(e.target.value)}
+                                onKeyPress={handleAddProbe}
+                            />
+
+                            {selectedProbes.length > 0 && (
+                                <List>
+                                    {selectedProbes.map((probe, index) => (
+                                        <ListItem key={index} sx={{ px: 0 }}>
+                                            {editingIndex === index ? (
+                                                <TextField
+                                                    fullWidth
+                                                    value={editingValue}
+                                                    onChange={(e) => setEditingValue(e.target.value)}
+                                                    onKeyPress={handleSaveEdit}
+                                                    onBlur={handleBlurEdit}
+                                                    autoFocus
+                                                />
+                                            ) : (
+                                                <>
+                                                    <ListItemText primary={probe} />
+                                                    <IconButton onClick={() => handleEditProbe(index)} size="small">
+                                                        <Edit />
+                                                    </IconButton>
+                                                    <IconButton onClick={() => handleDeleteProbe(index)} size="small">
+                                                        <Delete />
+                                                    </IconButton>
+                                                </>
+                                            )}
+                                        </ListItem>
+                                    ))}
+                                </List>
+                            )}
 
                             <Button type="submit" variant="contained" fullWidth sx={{ mt: 2 }}>
                                 Salvează
