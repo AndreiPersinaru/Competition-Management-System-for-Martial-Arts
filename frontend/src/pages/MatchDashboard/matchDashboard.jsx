@@ -390,8 +390,9 @@ const MatchDashboard = () => {
 
     const renderPlayerControls = (player) => {
         const isBlue = player === PLAYER_BLUE;
-        const theme = penalties[player] >= 4 ? THEME.disqualified : isBlue ? THEME.blue : THEME.white;
-        const isDisqualified = penalties[player] >= 4;
+        const penalizari = penalties[player];
+        const isDQ = penalizari >= 4;
+        const colors = isDQ ? THEME.disqualified : isBlue ? THEME.blue : THEME.white;
 
         return (
             <Grid key={player} xs={12} md={5}>
@@ -400,18 +401,19 @@ const MatchDashboard = () => {
                     sx={{
                         p: 5,
                         minWidth: 520,
-                        backgroundColor: theme.bgColor,
-                        color: theme.textColor,
-                        border: `3px solid ${theme.borderColor}`,
+                        backgroundColor: colors.bgColor,
+                        color: colors.textColor,
+                        border: `3px solid ${colors.borderColor}`,
                         borderRadius: 2,
+                        boxShadow: colors.boxShadow,
                         transform: player === PLAYER_WHITE ? "scaleX(-1)" : "none",
-                        opacity: isDisqualified ? 0.7 : 1,
+                        opacity: isDQ ? 0.7 : 1,
                     }}
                 >
                     <Box sx={{ transform: player === PLAYER_WHITE ? "scaleX(-1)" : "none" }}>
-                        <Typography variant="h5" mb={2}>
-                            {metadata.teams[player]?.name || `Player ${player + 1}`}
-                            {isDisqualified && (
+                        <Typography variant="h5" mb={2} sx={{ textShadow: `0 0 5px ${colors.borderColor}` }}>
+                            {metadata.teams?.[player]?.name || `Jucător ${player + 1}`}
+                            {isDQ && (
                                 <Typography variant="body2" color="error" sx={{ mt: 1 }}>
                                     DESCALIFICAT
                                 </Typography>
@@ -419,23 +421,18 @@ const MatchDashboard = () => {
                         </Typography>
 
                         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
-                            <Typography variant="h2" minWidth={70}>
+                            <Typography variant="h2" minWidth={70} sx={{ textShadow: `0 0 10px ${colors.borderColor}` }}>
                                 {score[player]}
                             </Typography>
                             <Box sx={{ display: "flex", gap: 1 }}>
                                 {[1, 2, 3].map((val) => (
                                     <Button
-                                        key={val}
+                                        key={`add${val}`}
                                         variant="contained"
                                         onClick={() => handleAddScore(player, val)}
-                                        disabled={isDisqualified}
+                                        disabled={isDQ}
                                         sx={{
-                                            minWidth: 40,
-                                            bgcolor: isBlue ? "#0d6efd" : "grey.300",
-                                            color: isBlue ? "white" : "black",
-                                            "&:hover": {
-                                                bgcolor: isBlue ? "#0b5ed7" : "grey.400",
-                                            },
+                                            minWidth: 50,
                                         }}
                                     >
                                         +{val}
@@ -445,17 +442,12 @@ const MatchDashboard = () => {
                             <Box sx={{ display: "flex", gap: 1, ml: 4 }}>
                                 {[1, 2, 3].map((val) => (
                                     <Button
-                                        key={val}
+                                        key={`remove${val}`}
                                         variant="contained"
                                         onClick={() => handleRemoveScore(player, val)}
-                                        disabled={isDisqualified}
+                                        disabled={isDQ}
                                         sx={{
-                                            minWidth: 40,
-                                            bgcolor: isBlue ? "#0d6efd" : "grey.300",
-                                            color: isBlue ? "white" : "black",
-                                            "&:hover": {
-                                                bgcolor: isBlue ? "#0b5ed7" : "grey.400",
-                                            },
+                                            minWidth: 50,
                                         }}
                                     >
                                         -{val}
@@ -465,40 +457,14 @@ const MatchDashboard = () => {
                         </Box>
 
                         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                            <Button
-                                variant="outlined"
-                                color="error"
-                                onClick={() => handleAddPenalty(player)}
-                                disabled={isDisqualified}
-                                sx={{
-                                    borderColor: isBlue ? "black" : "",
-                                    color: isBlue ? "black" : "",
-                                    bgcolor: isBlue ? "white" : "",
-                                }}
-                            >
+                            <Button variant="outlined" color="black" onClick={() => handleAddPenalty(player)} disabled={isDQ} sx={{ bgcolor: "white", color: "black" }}>
                                 Adaugă Penalizare
                             </Button>
-                            <Button
-                                variant="outlined"
-                                color="error"
-                                onClick={() => handleRemovePenalty(player)}
-                                sx={{
-                                    borderColor: isBlue ? "black" : "",
-                                    color: isBlue ? "black" : "",
-                                    bgcolor: isBlue ? "white" : "",
-                                }}
-                            >
+                            <Button variant="outlined" color="black" onClick={() => handleRemovePenalty(player)} sx={{ bgcolor: "white", color: "black" }}>
                                 Scoate Penalizare
                             </Button>
-                            <Typography
-                                variant="h6"
-                                sx={{
-                                    ml: 2,
-                                    color: penalties[player] >= 4 ? "#d32f2f" : "inherit",
-                                    fontWeight: penalties[player] >= 4 ? "bold" : "normal",
-                                }}
-                            >
-                                Penalizări: {penalties[player]}
+                            <Typography variant="h5" ml="auto" sx={{ textShadow: `0 0 5px ${colors.borderColor}` }}>
+                                Penalizări: {penalizari}
                             </Typography>
                         </Box>
                     </Box>
@@ -539,7 +505,7 @@ const MatchDashboard = () => {
     };
     const startLiveStream = async () => {
         await axios.post(`${API_URL}/start-livestream/`);
-    }
+    };
     const stopLiveStream = async () => {
         await axios.post(`${API_URL}/stop-livestream/`);
     };
